@@ -25,15 +25,15 @@ parser.add_argument('--model_dir', default='', help='base directory to save logs
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=50, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=20, help='number of epochs to train for')
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
-parser.add_argument('--epoch_size', type=int, default=600, help='epoch size')
+parser.add_argument('--epoch_size', type=int, default=2772, help='epoch size')
 parser.add_argument('--image_width', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--dataset', default='radar', help='dataset to train with')
-parser.add_argument('--n_past', type=int, default=3, help='number of frames to condition on')
-parser.add_argument('--n_future', type=int, default=7, help='number of frames to predict during training')
-parser.add_argument('--n_eval', type=int, default=7, help='number of frames to predict during eval')
+parser.add_argument('--n_past', type=int, default=5, help='number of frames to condition on')
+parser.add_argument('--n_future', type=int, default=25, help='number of frames to predict during training')
+parser.add_argument('--n_eval', type=int, default=25, help='number of frames to predict during eval')
 parser.add_argument('--rnn_size', type=int, default=256, help='dimensionality of hidden layer')
 parser.add_argument('--prior_rnn_layers', type=int, default=1, help='number of layers')
 parser.add_argument('--posterior_rnn_layers', type=int, default=1, help='number of layers')
@@ -41,7 +41,7 @@ parser.add_argument('--predictor_rnn_layers', type=int, default=2, help='number 
 parser.add_argument('--z_dim', type=int, default=10, help='dimensionality of z_t')
 parser.add_argument('--g_dim', type=int, default=128, help='dimensionality of encoder output vector and decoder input vector')
 parser.add_argument('--beta', type=float, default=0.0001, help='weighting on KL to prior')
-parser.add_argument('--model', default='vgg', help='model type (dcgan | vgg)')
+parser.add_argument('--model', default='dcgan', help='model type (dcgan | vgg)')
 parser.add_argument('--data_threads', type=int, default=5, help='number of data loading threads')
 parser.add_argument('--num_digits', type=int, default=2, help='number of digits for moving mnist')
 parser.add_argument('--last_frame_skip', default=True, help='if true, skip connections go between frame t and frame t+t rather than last ground truth frame') #action='store_true'
@@ -52,7 +52,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model4.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model2.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -184,17 +184,17 @@ def prep_data(files, filedir):
     # sort files by datetime
     sorted_files = sorted(files, key=gettimestamp)
 
-    # only keep filenames where 10 consecutive files exist at 5 min intervals
-    sorted_files = list(chunks(sorted_files, 10))
+    # only keep filenames where 30 consecutive files exist at 5 min intervals
+    sorted_files = list(chunks(sorted_files, 30))
     for group in sorted_files:
-        if len(group) < 10:
+        if len(group) < 30:
             sorted_files.remove(group)
         else:
             t0 = group[0].find('2018')
             dt1 = datetime.datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
-            t9 = group[9].find('2018')
-            dt2 = datetime.datetime.strptime(group[9][t9:t9+12], '%Y%m%d%H%M')
-            if (dt2-dt1 != datetime.timedelta(minutes=45)):
+            t29 = group[29].find('2018')
+            dt2 = datetime.datetime.strptime(group[29][t29:t29+12], '%Y%m%d%H%M')
+            if (dt2-dt1 != datetime.timedelta(minutes=145)):
                 print(dt2-dt1, 'remove files')
                 sorted_files.remove(group)
     count = 0
@@ -216,7 +216,7 @@ def prep_data(files, filedir):
         # Normalise data
         data = data / 32.
 
-        if len(data) < 10:
+        if len(data) < 30:
             print(fn)
             print('small data of size ', len(data))
             count += 1
@@ -370,7 +370,6 @@ def plot(x, epoch):
     fname = '%s/gen/sample_%d.gif' % (opt.log_dir, epoch) 
     utils.save_gif(fname, gifs)
 
-
 def plot_rec(x, epoch):
     frame_predictor.hidden = frame_predictor.init_hidden()
     posterior.hidden = posterior.init_hidden()
@@ -498,7 +497,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model4.pth' % opt.log_dir)
+        '%s/model2.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
