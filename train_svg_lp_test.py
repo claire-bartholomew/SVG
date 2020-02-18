@@ -40,7 +40,7 @@ parser.add_argument('--posterior_rnn_layers', type=int, default=1, help='number 
 parser.add_argument('--predictor_rnn_layers', type=int, default=2, help='number of layers')
 parser.add_argument('--z_dim', type=int, default=10, help='dimensionality of z_t')
 parser.add_argument('--g_dim', type=int, default=128, help='dimensionality of encoder output vector and decoder input vector')
-parser.add_argument('--beta', type=float, default=0.0001, help='weighting on KL to prior')
+parser.add_argument('--beta', type=float, default=0.000001, help='weighting on KL to prior')
 parser.add_argument('--model', default='dcgan', help='model type (dcgan | vgg)')
 parser.add_argument('--data_threads', type=int, default=5, help='number of data loading threads')
 parser.add_argument('--num_digits', type=int, default=2, help='number of digits for moving mnist')
@@ -52,7 +52,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model8.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -60,7 +60,7 @@ if opt.model_dir != '':
     opt.model_dir = model_dir
     opt.log_dir = '%s/continued' % opt.log_dir
 else:
-    name = 'model=%s%dx%d-rnn_size=%d-predictor-posterior-prior-rnn_layers=%d-%d-%d-n_past=%d-n_future=%d-lr=%.4f-g_dim=%d-z_dim=%d-last_frame_skip=%s-beta=%.7f%s' % (opt.model, opt.image_width, opt.image_width, opt.rnn_size, opt.predictor_rnn_layers, opt.posterior_rnn_layers, opt.prior_rnn_layers, opt.n_past, opt.n_future, opt.lr, opt.g_dim, opt.z_dim, opt.last_frame_skip, opt.beta, opt.name)
+    name = 'beta_model' #model=%s%dx%d-rnn_size=%d-predictor-posterior-prior-rnn_layers=%d-%d-%d-n_past=%d-n_future=%d-lr=%.4f-g_dim=%d-z_dim=%d-last_frame_skip=%s-beta=%.7f%s' % (opt.model, opt.image_width, opt.image_width, opt.rnn_size, opt.predictor_rnn_layers, opt.posterior_rnn_layers, opt.prior_rnn_layers, opt.n_past, opt.n_future, opt.lr, opt.g_dim, opt.z_dim, opt.last_frame_skip, opt.beta, opt.name)
     if opt.dataset == 'smmnist':
         opt.log_dir = '%s/%s-%d/%s' % (opt.log_dir, opt.dataset, opt.num_digits, name)
     else:
@@ -497,10 +497,12 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model8.pth' % opt.log_dir)
-    print('updated model saved')
+        '%s/model.pth' % opt.log_dir)
+    #print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
 
     print('MSE losses: ', mse_loss)
     print('KLD losses: ', kld_loss)
+
+    print('updated model saved here: %s/model.pth' % opt.log_dir)
