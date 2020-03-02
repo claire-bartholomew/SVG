@@ -19,13 +19,13 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
 parser.add_argument('--beta1', default=0.9, type=float, help='momentum term for adam')
-parser.add_argument('--batch_size', default=20, type=int, help='batch size')
+parser.add_argument('--batch_size', default=100, type=int, help='batch size')
 parser.add_argument('--log_dir', default='logs/lp', help='base directory to save logs')
-parser.add_argument('--model_dir', default='logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000', help='base directory to save logs')
+parser.add_argument('--model_dir', default='', help='base directory to save logs')
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=10, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=1, help='number of epochs to train for')
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
 parser.add_argument('--epoch_size', type=int, default=10800, help='epoch size')
 parser.add_argument('--image_width', type=int, default=128, help='the height / width of the input image to network')
@@ -229,6 +229,10 @@ def prep_data(files, filedir):
     # Convert to torch tensors
     tensor = torch.stack([torch.Tensor(i) for i in dataset])
 
+
+    #torch.save(tensor, 'tensor.pt') # added to try saving data so doesn't need to be prepped each time
+
+
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
                         batch_size=opt.batch_size,
@@ -255,7 +259,7 @@ val_dates = ['1222']
 
 # List all possible radar files in range and find those that exist
 files_t = [f'/nobackup/sccsb/radar/train/20{yy:02}{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
-           for mi in range(0, 60, 5) for h in range(24) for dd in range(1, 32) for mo in range(1, 13) for yy in [18]]
+           for mi in range(0, 60, 5) for h in range(24) for dd in range(1, 32) for mo in range(1, 13) for yy in [18]] #17]]
 
 list_train = []
 for file in files_t:
@@ -499,7 +503,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model9.pth' % opt.log_dir)
+        '%s/model1.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
