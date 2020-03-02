@@ -163,7 +163,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def prep_data(files, filedir):
+def prep_data(files, filedir, seq_len):
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -184,17 +184,17 @@ def prep_data(files, filedir):
     # sort files by datetime
     sorted_files = sorted(files, key=gettimestamp)
 
-    # only keep filenames where 30 consecutive files exist at 5 min intervals
-    sorted_files = list(chunks(sorted_files, 30))
+    # only keep filenames where 10 consecutive files exist at 5 min intervals
+    sorted_files = list(chunks(sorted_files, seq_len))
     for group in sorted_files:
-        if len(group) < 30:
+        if len(group) < seq_len:
             sorted_files.remove(group)
         else:
-            t0 = group[0].find('2018')
-            dt1 = datetime.datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
-            t29 = group[29].find('2018')
-            dt2 = datetime.datetime.strptime(group[29][t29:t29+12], '%Y%m%d%H%M')
-            if (dt2-dt1 != datetime.timedelta(minutes=145)):
+            tstart = group[0].find('201')
+            dt1 = datetime.datetime.strptime(group[0][tstart:tstart+12], '%Y%m%d%H%M')
+            tend = group[seq_len-1].find('201')
+            dt2 = datetime.datetime.strptime(group[seq_len-1][tend:tend+12], '%Y%m%d%H%M')
+            if (dt2-dt1 != datetime.timedelta(minutes=45)):
                 print(dt2-dt1, 'remove files')
                 sorted_files.remove(group)
     count = 0
@@ -216,7 +216,7 @@ def prep_data(files, filedir):
         # Normalise data
         data = data / 32.
 
-        if len(data) < 30:
+        if len(data) < seq_len:
             print(fn)
             print('small data of size ', len(data))
             count += 1
@@ -263,7 +263,7 @@ list_train = []
 for file in files_t:
     if os.path.isfile(file):
         list_train.append(file)
-train_loader = prep_data(list_train, 'train')
+train_loader = prep_data(list_train, 'train', seq_len=10)
 print('training data loaded')
 
 files_v = [f'/nobackup/sccsb/radar/test/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
