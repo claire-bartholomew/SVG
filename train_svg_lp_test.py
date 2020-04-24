@@ -272,7 +272,7 @@ list_tst = []
 for file in files_v:
     if os.path.isfile(file):
         list_tst.append(file)
-test_loader = prep_data(list_tst, 'test')
+test_loader = prep_data(list_tst, 'test', seq_len=10)
 
 def get_training_batch():
     while True:

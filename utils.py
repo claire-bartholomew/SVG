@@ -25,60 +25,22 @@ import pdb
 hostname = socket.gethostname()
 
 def load_dataset(opt):
-    if opt.dataset == 'smmnist':
-        from data.moving_mnist import MovingMNIST
-        train_data = MovingMNIST(
-                train=True,
-                data_root=opt.data_root,
-                seq_len=opt.n_past+opt.n_future,
-                image_size=opt.image_width,
-                deterministic=False,
-                num_digits=opt.num_digits)
-        test_data = MovingMNIST(
-                train=False,
-                data_root=opt.data_root,
-                seq_len=opt.n_eval,
-                image_size=opt.image_width,
-                deterministic=False,
-                num_digits=opt.num_digits)
-    elif opt.dataset == 'bair':
-        from data.bair import RobotPush 
-        train_data = RobotPush(
-                data_root=opt.data_root,
-                train=True,
-                seq_len=opt.n_past+opt.n_future,
-                image_size=opt.image_width)
-        test_data = RobotPush(
-                data_root=opt.data_root,
-                train=False,
-                seq_len=opt.n_eval,
-                image_size=opt.image_width)
-    elif opt.dataset == 'kth':
-        from data.kth import KTH 
-        train_data = KTH(
-                train=True, 
-                data_root=opt.data_root,
-                seq_len=opt.n_past+opt.n_future, 
-                image_size=opt.image_width)
-        test_data = KTH(
-                train=False, 
-                data_root=opt.data_root,
-                seq_len=opt.n_eval, 
-                image_size=opt.image_width)
-    elif opt.dataset == 'radar':
-        from data.radar import radar
-        train_data = radar(
+    if opt.dataset == 'radar':
+        from data.radar import RadarSeq
+        train_data = RadarSeq(
 		train=True,
                 data_root=opt.data_root,
                 seq_len=opt.n_past+opt.n_future,
                 image_size=opt.image_width)
-        test_data = radar(
-                train=False,
-                data_root=opt.data_root,
-                seq_len=opt.n_eval,
-                image_size=opt.image_width)
-     
-    return train_data, test_data
+        #test_data = RadarSeq(
+        #        train=False,
+        #        data_root=opt.data_root,
+        #        seq_len=opt.n_eval,
+        #        image_size=opt.image_width)
+
+    #pdb.set_trace() 
+
+    return train_data #, test_data
 
 def sequence_input(seq, dtype):
     return [Variable(x.type(dtype)) for x in seq]

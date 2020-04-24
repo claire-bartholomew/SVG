@@ -25,7 +25,7 @@ parser.add_argument('--model_dir', default='', help='base directory to save logs
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=1, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=3, help='number of epochs to train for')
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
 parser.add_argument('--epoch_size', type=int, default=10800, help='epoch size')
 parser.add_argument('--image_width', type=int, default=128, help='the height / width of the input image to network')
@@ -51,7 +51,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model9.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model080320.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -162,7 +162,7 @@ def chunks(l, n):
         yield l[i:i + n]
 
 
-def prep_data(files, filedir):
+def prep_data(files, filedir, seq_len):
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -184,16 +184,17 @@ def prep_data(files, filedir):
     sorted_files = sorted(files, key=gettimestamp)
 
     # only keep filenames where 10 consecutive files exist at 5 min intervals
-    sorted_files = list(chunks(sorted_files, 10))
+    sorted_files = list(chunks(sorted_files, seq_len))
     for group in sorted_files:
-        if len(group) < 10:
+        if len(group) < seq_len:
             sorted_files.remove(group)
         else:
-            t0 = group[0].find('201')
-            dt1 = datetime.datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
-            t9 = group[9].find('201')
-            dt2 = datetime.datetime.strptime(group[9][t9:t9+12], '%Y%m%d%H%M')
-            if (dt2-dt1 != datetime.timedelta(minutes=45)):
+            tstart = group[0].find('201')
+            dt1 = datetime.datetime.strptime(group[0][tstart:tstart+12], '%Y%m%d%H%M')
+            tend = group[seq_len-1].find('201')
+            dt2 = datetime.datetime.strptime(group[seq_len-1][tend:tend+12], '%Y%m%d%H%M')
+            minut = (seq_len-1)*5
+            if (dt2-dt1 != datetime.timedelta(minutes=minut)):
                 print(dt2-dt1, 'remove files')
                 sorted_files.remove(group)
     count = 0
@@ -215,7 +216,7 @@ def prep_data(files, filedir):
         # Normalise data
         data = data / 32.
 
-        if len(data) < 10:
+        if len(data) < seq_len:
             #print(fn)
             print('small data of size ', len(data))
             count += 1
@@ -268,16 +269,16 @@ for file in files_t:
         list_train.append(file)
 
 print('number of training files: ', len(list_train))
-train_loader = prep_data(list_train, 'train')
+train_loader = prep_data(list_train, 'train', seq_len=10)
 print('training data loaded')
 
-files_v = [f'/nobackup/sccsb/radar/test/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
-           for mi in range(0,60,5) for h in range(24) for mmdd in val_dates] #range(25,28) for mo in range(5,6)]
-list_tst = []
-for file in files_v:
-    if os.path.isfile(file):
-        list_tst.append(file)
-test_loader = prep_data(list_tst, 'test')
+#files_v = [f'/nobackup/sccsb/radar/test/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+#           for mi in range(0,60,5) for h in range(24) for mmdd in val_dates] #range(25,28) for mo in range(5,6)]
+#list_tst = []
+#for file in files_v:
+#    if os.path.isfile(file):
+#        list_tst.append(file)
+#test_loader = prep_data(list_tst, 'test', seq_len=10)
 
 def get_training_batch():
     while True:
@@ -503,7 +504,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model1.pth' % opt.log_dir)
+        '%s/model2.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
