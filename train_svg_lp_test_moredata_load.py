@@ -15,17 +15,18 @@ import numpy as np
 import re
 import datetime
 import time
+import pickle
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
 parser.add_argument('--beta1', default=0.9, type=float, help='momentum term for adam')
-parser.add_argument('--batch_size', default=100, type=int, help='batch size')
+parser.add_argument('--batch_size', default=20, type=int, help='batch size')
 parser.add_argument('--log_dir', default='logs/lp', help='base directory to save logs')
 parser.add_argument('--model_dir', default='', help='base directory to save logs')
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=1, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=50, help='number of epochs to train for')
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
 parser.add_argument('--epoch_size', type=int, default=10800, help='epoch size')
 parser.add_argument('--image_width', type=int, default=128, help='the height / width of the input image to network')
@@ -150,16 +151,37 @@ encoder.cuda()
 decoder.cuda()
 mse_criterion.cuda()
 
-def prep_data(tensor_fname):
+def prep_data(fdir):
     '''
     Load in saved torch tensor (from prep_data.py) and put into DataLoader,
     ready for use in model training or testing.
         Parameters:
-            tensor_fname (str): filename of saved tensor (in cwd)
+            fdir (str): file dir of saved pickle file
         Returns:
             loader (torch dataloader)
     '''
-    torch.load(tensor_fname)
+    train_list = []
+    for month in range(1, 13):
+        print('month =', month)
+        dataset0 = pickle.load(open('{}/data_test_{}.p'.format(fdir, month), 'rb'))
+        print('dataset0:', np.shape(dataset0))
+        train_list.append(dataset0)
+        print('train list:', np.shape(train_list))
+        #if month == 1:
+        #    dataset = dataset0 
+        #else:
+        #    dataset.append(dataset0)
+        #    print('dataset:', np.shape(dataset))
+
+    dataset = np.concatenate(train_list, axis=0)
+
+    print('data type:', type(dataset))
+    print('size of data:', len(dataset), np.shape(dataset))
+
+    # Convert to torch tensors
+    tensor = torch.stack([torch.Tensor(i) for i in dataset])
+    print(tensor.shape)    
+    #tensor = torch.load(tensor_fname)
 
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
@@ -169,8 +191,7 @@ def prep_data(tensor_fname):
                         pin_memory=True)
     return loader
 
-train_loader = prep_data('tensor_{}_{}.pt')
-test_loader = prep_data('tensor_{}_{}.pt')
+train_loader = prep_data('/nobackup/sccsb') #/nobackup/sccsb/tensor_565_seq10.pt')
 print('training data loaded')
 
 def get_training_batch():
@@ -181,15 +202,18 @@ def get_training_batch():
                 yield batch
 training_batch_generator = get_training_batch()
 
+print('training batch generated') #, now loading test data')
+#test_loader = prep_data('/nobackup/sccsb/tensor_565_seq10.pt')
+
 #pdb.set_trace()
 
-def get_testing_batch():
-    while True:
-        for sequence in test_loader: #.dataset:
-            if np.shape(sequence)[0] == opt.batch_size:
-                batch = utils.normalize_data(opt, dtype, sequence)
-                yield batch
-testing_batch_generator = get_testing_batch()
+#def get_testing_batch():
+#    while True:
+#        for sequence in test_loader: #.dataset:
+#            if np.shape(sequence)[0] == opt.batch_size:
+#                batch = utils.normalize_data(opt, dtype, sequence)
+#                yield batch
+#testing_batch_generator = get_testing_batch()
 
 # --------- plotting funtions ------------------------------------
 def plot(x, epoch):

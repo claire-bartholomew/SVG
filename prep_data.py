@@ -16,7 +16,7 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def prep_data(files, filedir, seq_len):
+def prep_data(files, filedir, seq_len): #month
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -59,33 +59,58 @@ def prep_data(files, filedir, seq_len):
         cube = iris.load(fn)
         cube = cube[0] / 32.
         cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
+        pdb.set_trace()
         data = cube1.data
-        #pdb.set_trace()
-        data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
-
-        # Set limit of large values - have asked Tim Darlington about these large values
-        data[np.where(data < 0)] = 0.
-        data[np.where(data > 32)] = 32.
-
-        # Normalise data
-        data = data / 32.
-
+        print(np.shape(data), len(data))
         if len(data) < seq_len:
             #print(fn)
             print('small data of size ', len(data))
             count += 1
         else:
+            #print(np.shape(data))
+            data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
+
+            # Set limit of large values - have asked Tim Darlington about these large values
+            data[np.where(data < 0)] = 0.
+            data[np.where(data > 32)] = 32.
+
+            # Normalise data
+            data = data / 32.
+
             dataset.append(data)
+
+        #if len(data) < seq_len:
+        #    #print(fn)
+        #    print('small data of size ', len(data))
+        #    count += 1
+        #else:
+        #    dataset.append(data)
 
     print('count', count)
 
     print('size of data:', len(dataset), np.shape(dataset))
 
-    # Convert to torch tensors
-    tensor = torch.stack([torch.Tensor(i) for i in dataset])
+    # Trial saving as pickle files
+    import pickle
+    #print('load pickle')
+    #pickle.load(dataset, 'data_test.pkl')
+    print('start pickle')
+    #pickle.dump(dataset, open('data_test.p', 'wb'))
 
-    # Save out data so can load in tensor when running main model
-    torch.save(tensor, 'tensor_{}_seq{}.pt'.format(len(dataset), seq_len)) # added to try saving data so doesn't need to be prepped each time
+    with open('/nobackup/sccsb/data_test2.p', 'wb') as f:
+        pickle.dump(dataset, f)
+
+    print('pickle 1 complete')
+
+    pickle.dump(dataset, open('/nobackup/sccsb/data_test3.p', 'wb'))
+
+    print('pickle 2 complete')
+
+    ## Convert to torch tensors
+    #tensor = torch.stack([torch.Tensor(i) for i in dataset])
+
+    ## Save out data so can load in tensor when running main model
+    #torch.save(tensor, '/nobackup/sccsb/tensor_2018_{}_{}_seq{}.pt'.format(month, len(dataset), seq_len)) # added to try saving data so doesn't need to be prepped each time
 
     #loader = DataLoader(tensor, #batch_size=1)
     #                    #num_workers=opt.data_threads,
@@ -110,9 +135,10 @@ def prep_data(files, filedir, seq_len):
 #               '1206', '1207', '1208', '1215', '1216', '1217', '1218', '1219',
 #               '1220', '1221']
 
+
 # List all possible radar files in range and find those that exist
 files_t = [f'/nobackup/sccsb/radar/train/20{yy:02}{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
-           for mi in range(0, 60, 5) for h in range(24) for dd in range(1, 32) for mo in range(1, 13) for yy in [18]] #17]]
+          for mi in range(0, 60, 5) for h in range(24) for dd in range(1, 32) for mo in range(1, 13) for yy in [18]]
 
 list_train = []
 for file in files_t:
@@ -122,6 +148,27 @@ for file in files_t:
 
 print('number of training files: ', len(list_train))
 prep_data(list_train, 'train', seq_len=10)
+
+
+# To save out one month at a time
+#for month in range(1,13):
+#    # List all possible radar files in range and find those that exist
+#    files_t = [f'/nobackup/sccsb/radar/train/20{yy:02}{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+#              for mi in range(0, 60, 5) for h in range(24) for dd in range(1, 32) for mo in range(month, month+1) for yy in [18]]
+
+#    list_train = []
+#    for file in files_t:
+#        if os.path.isfile(file):
+#            #print(file)
+#            list_train.append(file)
+
+#    print('number of training files: ', len(list_train))
+#    prep_data(list_train, month, 'train', seq_len=10)
+
+
+
+
+
 #train_loader = prep_data(list_train, 'train', seq_len=10)
 #print('training data loaded')
 
