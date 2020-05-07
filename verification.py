@@ -3,59 +3,73 @@ import iris
 import nimrod_to_cubes as n2c
 import numpy as np
 import pdb
+import os
 
 def main():
 
-    mm = 8
-    dd = 1
-    hh = 1
-    min = 30
-    dt_str = '2019{:02d}{:02d}{:02d}{:02d}'.format(mm, dd, hh, min)
-    dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
-
+    #mm = 8
+    #dd = 1
+    #hh = 1
+    #min = 30
+    #dt_str = '2019{:02d}{:02d}{:02d}{:02d}'.format(mm, dd, hh, min)
+    #dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     #start_date =
-    #end_date = 
+    #end_date =
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
-    # Load data
-    n_cubelist = load_nowcast(dt_str, sample_points)
-    r_cubelist = load_radar(dt, dt_str, sample_points)
 
-    fbs2 = 0
-    fbs_worst2 = 0
-    # Generate fractions over grid then calculate FSS
+    # Load all dates in op_nowcast data
+    files = [f'/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/2019{mo:02}{dd:02}{h:02}{mi:02}_u1096_ng_pp_precip_2km' \
+             for mi in range(0, 60, 15) for h in range(24) for dd in range(1, 32) for mo in range(8, 11)]
+
+    files_exist = []
+    for file in files:
+        if os.path.isfile(file):
+            files_exist.append(file)
+
     for i, flt in enumerate([30, 60, 90]):
-        ob_fraction = generate_fractions(r_cubelist[i], n_size=9, threshold=1)
-        nc_fraction = generate_fractions(n_cubelist[i], n_size=9, threshold=1)
-        fbs, fbs_worst, fss = calculate_fss(ob_fraction, nc_fraction)
+        fbs_sum = 0
+        fbs_worst_sum = 0
+        for file in files_exist:
+            print(file)
+            dt = datetime.strptime(file, '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/%Y%m%d%H%M_u1096_ng_pp_precip_2km')
+            dt_str = dt.strftime('%Y%m%d%H%M')
+
+            # Load data
+            n_cubelist = load_nowcast(dt_str, sample_points)
+            r_cubelist = load_radar(dt, dt_str, sample_points)
+
+            # Generate fractions over grid then calculate FBS and FBSworst
+            ob_fraction = generate_fractions(r_cubelist[i], n_size=9, threshold=1)
+            nc_fraction = generate_fractions(n_cubelist[i], n_size=9, threshold=1)
+            fbs, fbs_worst = calculate_fbs(ob_fraction, nc_fraction)
+            fbs_sum += fbs
+            fbs_worst_sum += fbs_worst
+
+        # Calculate FSS (following method in Roberts (2008))
+        fss = 1 - fbs_sum /fbs_worst_sum
         print('FSS at t+{} = {}'.format(flt, fss))
-        fbs2 += fbs
-        fbs_worst2 += fbs_worst
-
-    fss2 = 1 - fbs2 /fbs_worst2
-
-    print('overall FSS = {}'.format(fss2))
 
     pdb.set_trace()
 
 
-def calculate_fss(ob_fraction, nc_fraction):
+def calculate_fbs(ob_fraction, nc_fraction):
     '''
     Calculate Fractions Skill Score (FSS) using method as in Roberts (2008)
     Args:
         ob_fraction (arr):
         nc_fraction (arr):
     Returns:
-        fss (float):
+        fbs (float):
+        fbs_worst (float):
     '''
     n = np.shape(ob_fraction)[0] * np.shape(ob_fraction)[1]
     fbs = 1 / n * np.sum((ob_fraction - nc_fraction)**2)
     fbs_worst = 1 / n * (np.sum(ob_fraction**2) + np.sum(nc_fraction**2))
-    fss = 1 - fbs / fbs_worst
 
-    return fbs, fbs_worst, fss
+    return fbs, fbs_worst
 
 def generate_fractions(cube, n_size, threshold):
     '''
