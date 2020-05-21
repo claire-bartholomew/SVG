@@ -76,8 +76,8 @@ image_width = tmp['opt'].image_width
 #===============================================================================
 def main():
 
-    startdate = datetime.strptime('201908010000', '%Y%m%d%H%M')
-    enddate = datetime.strptime('201911010000', '%Y%m%d%H%M')
+    startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
+    enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
     dtime = startdate
 
     while True:
@@ -96,44 +96,44 @@ def main():
                 if os.path.isfile(file):
                     list_tst.append(file)
 
-            test_loader, cube, start_date = prep_data(list_tst, 'test')
-            testing_batch_generator = get_testing_batch(test_loader)
+            test_loader, cube, start_date, skip = prep_data(list_tst, 'test')
+            if skip == False:
+                testing_batch_generator = get_testing_batch(test_loader)
 
-            # Create cubes of right sizes (and scale for cbar by multiplying by 32)
-            pred_cube = cube[:, 160:288, 130:258]
-            pred_cube *= 32.
+                # Create cubes of right sizes (and scale for cbar by multiplying by 32)
+                pred_cube = cube[:, 160:288, 130:258]
+                pred_cube *= 32.
 
-            i = 0
-            print('start datetime:', start_date[i])
-            yyyy = str(start_date[i])[10:14]
-            mm = str(start_date[i])[15:17]
-            dd = str(start_date[i])[18:20]
-            hh = str(start_date[i])[21:23]
-            mi = str(start_date[i])[24:26]
-            dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
-            # generate predictions
-            test_x = next(testing_batch_generator)
-            ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test')
+                i = 0
+                print('start datetime:', start_date[i])
+                yyyy = str(start_date[i])[10:14]
+                mm = str(start_date[i])[15:17]
+                dd = str(start_date[i])[18:20]
+                hh = str(start_date[i])[21:23]
+                mi = str(start_date[i])[24:26]
+                dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
+                # generate predictions
+                test_x = next(testing_batch_generator)
+                ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test')
 
-            batch_number = 0 #in range(1): #batch_size):
-            # Find index of sample with highest SSIM score
-            #mean_ssim = np.mean(ssim[0], 1)
-            mean_ssim = np.mean(ssim[batch_number], 1)
-            ordered = np.argsort(mean_ssim)
-            sidx = ordered[-1]
-            #rand_sidx = [np.random.randint(nsample) for s in range(3)]
-            for t in range(n_eval):
-                #print('time = ', t)
-                pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() *32.
-                pred_cube.units = 'mm/hr'
-                #print('{} : T+{:02d} min'.format(start_date[i], t*5))
-                #if t == 0:
-                #    qplt.contourf(pred_cube[0])
-                #    plt.show()
-            iris.save(pred_cube, "nn_T{}.nc".format(dt_str))
+                batch_number = 0 #in range(1): #batch_size):
+                # Find index of sample with highest SSIM score
+                #mean_ssim = np.mean(ssim[0], 1)
+                mean_ssim = np.mean(ssim[batch_number], 1)
+                ordered = np.argsort(mean_ssim)
+                sidx = ordered[-1]
+                #rand_sidx = [np.random.randint(nsample) for s in range(3)]
+                for t in range(n_eval):
+                    #print('time = ', t)
+                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() *32.
+                    pred_cube.units = 'mm/hr'
+                    #print('{} : T+{:02d} min'.format(start_date[i], t*5))
+                    #if t == 0:
+                    #    qplt.contourf(pred_cube[0])
+                    #    plt.show()
+                iris.save(pred_cube, "nn_T{}.nc".format(dt_str))
 
             dtime = dtime + timedelta(minutes=15)
-
 
 # --------- load a dataset ------------------------------------
 def chunks(l, n):
@@ -178,33 +178,42 @@ def prep_data(files, filedir):
     fn = sorted_files[0]
     #print(fn)
     cube = iris.load(fn)
+    if len(cube) > 1:
+        for i, cu in enumerate(cube):
+            if np.shape(cu.coord('time'))[0] == 1:
+                cube[i] = iris.util.new_axis(cu, 'time')
+        cube = cube.merge()
+
     cube = cube[0] / 32. #Convert to mm/hr
     cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
     data = cube1.data
-    data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
-    # Set limit of large values - have asked Tim Darlington about these large values
-    data[np.where(data < 0)] = 0.
-    data[np.where(data > 32)] = 32.
-    # Normalise data
-    data = data / 32.
     if len(data) < 15:
         print('small data of size ', len(data))
+        skip = True
+        loader = []
+        start_date = []
     else:
+        skip = False
+        data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
+        # Set limit of large values - have asked Tim Darlington about these large values
+        data[np.where(data < 0)] = 0.
+        data[np.where(data > 32)] = 32.
+        # Normalise data
+        data = data / 32.
         start_date = cube.coord('forecast_reference_time')[0]
         dataset.append(data)
         dataset.append(data)
         dataset.append(data)
+        # Convert to torch tensors
+        tensor = torch.stack([torch.Tensor(i) for i in dataset])
+        loader = DataLoader(tensor, #batch_size=1)
+                            #num_workers=opt.data_threads,
+                            batch_size=batch_size,
+                            shuffle=False, #True, #False to keep same order of data
+                            #drop_last=True,
+                            pin_memory=True)
 
-    # Convert to torch tensors
-    tensor = torch.stack([torch.Tensor(i) for i in dataset])
-    loader = DataLoader(tensor, #batch_size=1)
-                        #num_workers=opt.data_threads,
-                        batch_size=batch_size,
-                        shuffle=False, #True, #False to keep same order of data
-                        #drop_last=True,
-                        pin_memory=True)
-
-    return loader, cube1, start_date
+    return loader, cube1, start_date, skip
 
 # -------------------------------------------------------------
 def get_testing_batch(test_loader):
