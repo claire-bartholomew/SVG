@@ -17,8 +17,9 @@ def main():
              for h in range(24) for dd in range(1, 32) for mo in range(8, 11)]
 
     # Choose variables
-    thrshld = 1  # rain rate threshold (mm/hr)
+    thrshld = 4  # rain rate threshold (mm/hr)
     neighbourhood = 9   # neighbourhood size (e.g. 9 = 3x3)
+    timesteps = [30, 60]
     #---------------------------------------------------------------------#
 
     files_exist = []
@@ -26,7 +27,7 @@ def main():
         if os.path.isfile(file):
             files_exist.append(file)
 
-    for i, flt in enumerate([30]): #, 60]): #, 90]):
+    for i, flt in enumerate(timesteps):
         fbs_nn_sum = 0
         fbs_nn_worst_sum = 0
         fbs_on_sum = 0
@@ -40,10 +41,10 @@ def main():
 
             # Load data and calculate FBS scores:
             # Neural network output
-            nn_cubelist, skip0 = load_nn_pred(dt_str)
+            nn_cubelist, skip0 = load_nn_pred(dt_str, timesteps)
             if skip0 == False:
                 count_nnfiles += 1
-                r_cubelist = load_radar(dt, dt_str, sample_points)
+                r_cubelist = load_radar(dt, dt_str, sample_points, timesteps)
                 # Generate fractions over grid then calculate FBS and FBSworst
                 ob_fraction = generate_fractions(r_cubelist[i],
                                         n_size=neighbourhood, threshold=thrshld)
@@ -54,10 +55,10 @@ def main():
                 fbs_nn_worst_sum += fbs_worst
 
             # Operational nowcast output
-            n_cubelist, skip = load_nowcast(dt_str, sample_points)
+            n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps)
             if skip == False:
                 count_onfiles += 1
-                r_cubelist = load_radar(dt, dt_str, sample_points)
+                r_cubelist = load_radar(dt, dt_str, sample_points, timesteps)
 
                 # Generate fractions over grid then calculate FBS and FBSworst
                 ob_fraction = generate_fractions(r_cubelist[i],
@@ -77,7 +78,7 @@ def main():
     print('number of ON files: {}'.format(count_onfiles))
     print('number of NN files: {}'.format(count_nnfiles))
 
-    pdb.set_trace()
+    #pdb.set_trace()
 
 
 def calculate_fbs(ob_fraction, nc_fraction):
@@ -125,7 +126,7 @@ def generate_fractions(cube, n_size, threshold):
 
     return fractions
 
-def load_nn_pred(dt_str):
+def load_nn_pred(dt_str, timesteps):
     nn_cubelist = []
     nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model131219/nn_T{}.nc'.format(dt_str)
     print(nn_f)
@@ -135,14 +136,15 @@ def load_nn_pred(dt_str):
         cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
         nn_cubes = list(cube_gen)
         nn_cube = nn_cubes[0]
-        for timestep in [6]: #, 12]: # pull t+30 and t+60 data
-            nn_cubelist.append(nn_cube[timestep])
+        # Get index for timesteps
+        for timestep in timesteps:
+            nn_cubelist.append(nn_cube[int(timestep / 5)])
     else:
         skip = True
 
     return nn_cubelist, skip
 
-def load_nowcast(dt_str, sample_points):
+def load_nowcast(dt_str, sample_points, timesteps):
     # Load nowcast data
     nwcst_f = '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/{}_u1096_ng_pp_precip_2km'.format(dt_str)
     cubelist = n2c.nimrod_to_cubes(nwcst_f)
@@ -159,21 +161,22 @@ def load_nowcast(dt_str, sample_points):
                     nowcast = cubelist[i]
 
         nc_cube = nowcast.interpolate(sample_points, iris.analysis.Linear())
-        nowcast_cube = nc_cube[:, 160:288, 130:258]/32
-        for cu in [1]: #, 3]: #, 5]: #i.e. t+30, t+60, t+90
-            n_cubelist.append(nowcast_cube[cu])
+        nowcast_cube = nc_cube[:, 160:288, 130:258] / 32
+        # Get index for timesteps
+        for cu in timesteps:
+            n_cubelist.append(nowcast_cube[int(cu / 30 * 2 - 1)])
 
     return n_cubelist, skip
 
-def load_radar(dt, dt_str, sample_points):
+def load_radar(dt, dt_str, sample_points, timesteps):
     # Load radar data
     r_cubelist = []
-    for t in [30]: #, 60]: #, 90]:
+    for t in timesteps:
         ti = (dt + timedelta(minutes = t)).strftime('%Y%m%d%H%M')
         radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str)
         radar = iris.load(radar_f)
         r_cube = radar[0].interpolate(sample_points, iris.analysis.Linear())
-        radar_cube = r_cube[160:288, 130:258]/32
+        radar_cube = r_cube[160:288, 130:258] / 32
         r_cubelist.append(radar_cube)
 
     return r_cubelist
