@@ -74,10 +74,11 @@ channels = tmp['opt'].channels
 image_width = tmp['opt'].image_width
 
 #===============================================================================
-def main(startdate, enddate):
+def main(startdate): #, enddate):
 
     #startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
     #enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
+    enddate = startdate + timedelta(minutes=15)
     dtime = startdate
 
     while True:
@@ -187,7 +188,7 @@ def prep_data(files, n_eval):
     cube = cube[0] / 32. #Convert to mm/hr
     cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
     data = cube1.data
-    
+
     if len(data) < n_eval:
         print('small data of size ', len(data))
         skip = True
@@ -295,5 +296,5 @@ def make_gifs(x, name):
 
 if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
-    enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
-    main(startdate, enddate)
+    #enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
+    main(startdate) #, enddate)
