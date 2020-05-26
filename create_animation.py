@@ -12,14 +12,18 @@ import matplotlib
 import matplotlib.pyplot as plt
 
 def main():
-
+    #--------------------------------------------------------------
+    # Options:
     dt_str = '201909291300'
+    model_path = '/scratch/cbarth/phd/model131219.pth'
+    #--------------------------------------------------------------
+
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
-    #run_svg.main(dt)
+    run_svg.main(dt, trained_model)
 
     # Neural network output
     nn_cubelist = load_nn_pred(dt_str)

@@ -30,7 +30,7 @@ batch_size = 3 #, type=int, help='batch size')
 data_root = 'data' #', help='root directory for data')
 #model_path = 'logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/model4.pth'
 #model_path = 'logs/lp/radar/model=vgg128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=False-beta=0.0001000/model3.pth'
-model_path = '/scratch/cbarth/phd/model131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
+#model_path = '/scratch/cbarth/phd/model131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
 log_dir = 'logs' #, help='directory to save generations to')
 seed = 1 #', default=1, type=int, help='manual seed')
 n_past = 3 #', type=int, default=3, help='number of frames to condition on')
@@ -74,7 +74,7 @@ channels = tmp['opt'].channels
 image_width = tmp['opt'].image_width
 
 #===============================================================================
-def main(startdate): #, enddate):
+def main(startdate, model_path): #, enddate):
 
     #startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
     #enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
@@ -296,5 +296,6 @@ def make_gifs(x, name):
 
 if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
+    model_path = '/scratch/cbarth/phd/model131219.pth'
     #enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
-    main(startdate) #, enddate)
+    main(startdate, model_path) #, enddate)
