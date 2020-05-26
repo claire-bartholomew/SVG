@@ -34,7 +34,7 @@ model_path = '/scratch/cbarth/phd/model131219.pth' #070520.pth' #060320.pth' #16
 log_dir = 'logs' #, help='directory to save generations to')
 seed = 1 #', default=1, type=int, help='manual seed')
 n_past = 3 #', type=int, default=3, help='number of frames to condition on')
-n_future = 12 #', type=int, default=7, help='number of frames to predict')
+n_future = 21 #', type=int, default=7, help='number of frames to predict')
 num_threads = 0 #', type=int, default=0, help='number of data loading threads')
 nsample = 30 #', type=int, default=100, help='number of samples')
 N = 256 #', type=int, default=256, help='number of samples')
@@ -74,10 +74,10 @@ channels = tmp['opt'].channels
 image_width = tmp['opt'].image_width
 
 #===============================================================================
-def main():
+def main(startdate, enddate):
 
-    startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
-    enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
+    #startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
+    #enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
     dtime = startdate
 
     while True:
@@ -96,7 +96,7 @@ def main():
                 if os.path.isfile(file):
                     list_tst.append(file)
 
-            test_loader, cube, start_date, skip = prep_data(list_tst, 'test')
+            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval)
             if skip == False:
                 testing_batch_generator = get_testing_batch(test_loader)
 
@@ -131,7 +131,7 @@ def main():
                     #if t == 0:
                     #    qplt.contourf(pred_cube[0])
                     #    plt.show()
-                iris.save(pred_cube, "nn_T{}.nc".format(dt_str))
+                iris.save(pred_cube, "plots_nn_T{}.nc".format(dt_str))
 
             dtime = dtime + timedelta(minutes=15)
 
@@ -141,7 +141,7 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def prep_data(files, filedir):
+def prep_data(files, n_eval):
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -155,27 +155,27 @@ def prep_data(files, filedir):
         return datetime.strptime(m.groups()[0], timeformat)
 
     # sort files by datetime
-    sorted_files = sorted(files, key=gettimestamp)
+    sorted_files1 = sorted(files, key=gettimestamp)
 
-    # only keep filenames where 21 consecutive files exist at 5 min intervals
-    sorted_files = list(chunks(sorted_files, 15))
-    for group in sorted_files:
-        if len(group) < 15:
-            sorted_files.remove(group)
-        else:
-            t0 = group[0].find('201')
-            dt1 = datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
-            t9 = group[14].find('201')
-            dt2 = datetime.strptime(group[14][t9:t9+12], '%Y%m%d%H%M')
-            #print(dt1, dt2)
-            if (dt2-dt1 != timedelta(minutes=75)):
-                print(dt2-dt1, 'remove files')
-                sorted_files.remove(group)
+    # only keep filenames where the right number of  consecutive files exist at 5 min intervals
+    sorted_files = list(sorted_files1[0:0+n_eval]) #chunks(sorted_files1, n_eval))
+    #for group in sorted_files:
+    #    if len(group) < n_eval:
+    #        sorted_files.remove(group)
+    #    else:
+    #        t0 = group[0].find('201')
+    #        dt1 = datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
+    #        t9 = group[n_eval-1].find('201')
+    #        dt2 = datetime.strptime(group[n_eval-1][t9:t9+12], '%Y%m%d%H%M')
+    #        #print(dt1, dt2)
+    #        if (dt2-dt1 != timedelta(minutes=n_eval*5)):
+    #            print(dt2-dt1, 'remove files')
+    #            sorted_files.remove(group)
 
     #start_date = []
     dataset = []
     #for fn in sorted_files:
-    fn = sorted_files[0]
+    fn = sorted_files #[0]
     #print(fn)
     cube = iris.load(fn)
     if len(cube) > 1:
@@ -187,7 +187,8 @@ def prep_data(files, filedir):
     cube = cube[0] / 32. #Convert to mm/hr
     cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
     data = cube1.data
-    if len(data) < 15:
+    
+    if len(data) < n_eval:
         print('small data of size ', len(data))
         skip = True
         loader = []
@@ -293,4 +294,6 @@ def make_gifs(x, name):
     return(ssim, x, posterior_gen, all_gen)
 
 if __name__ == "__main__":
-    main()
+    startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
+    enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
+    main(startdate, enddate)

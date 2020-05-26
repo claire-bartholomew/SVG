@@ -38,7 +38,7 @@ def load_dataset(opt):
         #        seq_len=opt.n_eval,
         #        image_size=opt.image_width)
 
-    #pdb.set_trace() 
+    #pdb.set_trace()
 
     return train_data #, test_data
 
@@ -58,6 +58,13 @@ def normalize_data(opt, dtype, sequence):
     sequence = sequence.transpose_(0, 1)
     #sequence = sequence.unsqueeze(0)
     #pdb.set_trace()
+    return sequence_input(sequence, dtype)
+
+def normalize_data_gen(dtype, sequence):
+    # Add 1 dimension
+    sequence = sequence.unsqueeze(2)
+    sequence = sequence.transpose_(0, 1)
+
     return sequence_input(sequence, dtype)
 
 def is_sequence(arg):
@@ -240,7 +247,7 @@ def fspecial_gauss(size, sigma):
     x, y = np.mgrid[-size//2 + 1:size//2 + 1, -size//2 + 1:size//2 + 1]
     g = np.exp(-((x**2 + y**2)/(2.0*sigma**2)))
     return g/g.sum()
-  
+
 def finn_ssim(img1, img2, cs_map=False):
     img1 = img1.astype(np.float64)
     img2 = img2.astype(np.float64)
@@ -262,7 +269,7 @@ def finn_ssim(img1, img2, cs_map=False):
     sigma12 = signal.fftconvolve(img1*img2, window, mode='valid') - mu1_mu2
     if cs_map:
         return (((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*
-                    (sigma1_sq + sigma2_sq + C2)), 
+                    (sigma1_sq + sigma2_sq + C2)),
                 (2.0*sigma12 + C2)/(sigma1_sq + sigma2_sq + C2))
     else:
         return ((2*mu1_mu2 + C1)*(2*sigma12 + C2))/((mu1_sq + mu2_sq + C1)*
@@ -277,4 +284,3 @@ def init_weights(m):
     elif classname.find('BatchNorm') != -1:
         m.weight.data.normal_(1.0, 0.02)
         m.bias.data.fill_(0)
-

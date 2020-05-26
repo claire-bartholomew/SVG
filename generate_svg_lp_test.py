@@ -95,12 +95,13 @@ def prep_data(files, filedir):
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     timeformat = "%Y%m%d%H%M"
-    if filedir == 'train':
-        regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
-    elif filedir == 'test':
-        regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
-    elif filedir == 'may':
-        regex = re.compile("^/nobackup/sccsb/radar/may/(\d*)")
+    regex = re.compile("^/data/cr1/cbarth/phd/SVG/verification_data/radar/(\d*)")
+    #if filedir == 'train':
+    #    regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
+    #elif filedir == 'test':
+    #    regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
+    #elif filedir == 'may':
+    #    regex = re.compile("^/nobackup/sccsb/radar/may/(\d*)")
 
     def gettimestamp(thestring):
         m = regex.search(thestring)
@@ -160,7 +161,7 @@ def prep_data(files, filedir):
 #               #'1103', '1106', '1107'] #, '0809', '1108', '1109'] #, '1110', '1112', '1113'
 #                #'1120', '1127', '1128', '1129', '1130']
 
-val_dates = ['0304'] #, '0305', '0309'] #, '0310', '0311', '0314', '0315', '0322',
+#val_dates = ['0304'] #, '0305', '0309'] #, '0310', '0311', '0314', '0315', '0322',
                  #'0326', '0327', '0329', '0330', '0602', '0613', '0619', '0910',
                  #'0911', '0915', '0917', '0918', '0919', '0920', '0922', '1201']#,
                  ##'1202', '1204', '1205', '1206', '1207', '1208', '1215', '1216',
@@ -177,8 +178,11 @@ val_dates = ['0304'] #, '0305', '0309'] #, '0310', '0311', '0314', '0315', '0322
 #train_loader = prep_data(list_train, 'train')
 #print('training data loaded')
 
-files_v = [f'/nobackup/sccsb/radar/test/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
-           for mi in range(0,60,5) for h in range(24) for mmdd in val_dates]
+#files_v = [f'/nobackup/sccsb/radar/test/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+#           for mi in range(0,60,5) for h in range(24) for mmdd in val_dates]
+
+files_v = [f'/data/cr1/cbarth/phd/SVG/verification_data/radar/2019{mm:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+           for mi in range(0,60,5) for h in range(24) for dd in range(32) for mm in range(8, 11)]
 
 list_tst = []
 for file in files_v:
@@ -215,15 +219,15 @@ def make_gifs(x, idx, name):
         #import pdb; pdb.set_trace()
         h = encoder(x_in)
         h_target = encoder(x[i])[0].detach()
-        
-        if opt.last_frame_skip or i < opt.n_past:	
+
+        if opt.last_frame_skip or i < opt.n_past:
             h, skip = h
         else:
             h, _ = h
         h = h.detach()
         _, z_t, _= posterior(h_target) # take the mean
         if i < opt.n_past:
-            frame_predictor(torch.cat([h, z_t], 1)) 
+            frame_predictor(torch.cat([h, z_t], 1))
             posterior_gen.append(x[i])
             x_in = x[i]
         else:
@@ -231,8 +235,7 @@ def make_gifs(x, idx, name):
             x_in = decoder([h_pred, skip]).detach()
             posterior_gen.append(x_in)
 
-        pdb.set_trace()
-  
+        #pdb.set_trace()
 
     nsample = opt.nsample
     ssim = np.zeros((opt.batch_size, nsample, opt.n_future))
@@ -251,7 +254,7 @@ def make_gifs(x, idx, name):
         all_gen[s].append(x_in)
         for i in range(1, opt.n_eval):
             h = encoder(x_in)
-            if opt.last_frame_skip or i < opt.n_past:	
+            if opt.last_frame_skip or i < opt.n_past:
                 h, skip = h
             else:
                 h, _ = h
@@ -283,17 +286,17 @@ def make_gifs(x, idx, name):
         ordered = np.argsort(mean_ssim)
         rand_sidx = [np.random.randint(nsample) for s in range(3)]
         for t in range(opt.n_eval):
-            # gt 
+            # gt
             gifs[t].append(add_border(x[t][i], 'green'))
             text[t].append('Ground\ntruth')
-            #posterior 
+            #posterior
             if t < opt.n_past:
                 color = 'green'
             else:
                 color = 'red'
             gifs[t].append(add_border(posterior_gen[t][i], color))
             text[t].append('Approx.\nposterior')
-            # best 
+            # best
             if t < opt.n_past:
                 color = 'green'
             else:
@@ -306,7 +309,7 @@ def make_gifs(x, idx, name):
                 gifs[t].append(add_border(all_gen[rand_sidx[s]][t][i], color))
                 text[t].append('Random\nsample %d' % (s+1))
 
-        fname = '%s/%s_%d.gif' % (opt.log_dir, name, idx+i) 
+        fname = '%s/%s_%d.gif' % (opt.log_dir, name, idx+i)
         utils.save_gif_with_text(fname, gifs, text)
 
 def add_border(x, color, pad=1):
@@ -314,7 +317,7 @@ def add_border(x, color, pad=1):
     nc = x.size()[0]
     px = Variable(torch.zeros(3, w+2*pad+30, w+2*pad))
     if color == 'red':
-        px[0] =0.7 
+        px[0] =0.7
     elif color == 'green':
         px[1] = 0.7
     if nc == 1:
@@ -334,4 +337,3 @@ for i in range(0, opt.N, opt.batch_size):
     test_x = next(testing_batch_generator)
     make_gifs(test_x, i, 'test')
     print(i)
-
