@@ -15,20 +15,20 @@ import numpy as np
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
 parser.add_argument('--beta1', default=0.9, type=float, help='momentum term for adam')
-parser.add_argument('--batch_size', default=100, type=int, help='batch size')
+parser.add_argument('--batch_size', default=20, type=int, help='batch size')
 parser.add_argument('--log_dir', default='logs/lp', help='base directory to save logs')
 parser.add_argument('--model_dir', default='', help='base directory to save logs')
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=300, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=50, help='number of epochs to train for')
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
-parser.add_argument('--epoch_size', type=int, default=600, help='epoch size')
+parser.add_argument('--epoch_size', type=int, default=2772, help='epoch size')
 parser.add_argument('--image_width', type=int, default=64, help='the height / width of the input image to network')
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--dataset', default='smmnist', help='dataset to train with')
-parser.add_argument('--n_past', type=int, default=5, help='number of frames to condition on')
-parser.add_argument('--n_future', type=int, default=10, help='number of frames to predict during training')
+parser.add_argument('--n_past', type=int, default=3, help='number of frames to condition on')
+parser.add_argument('--n_future', type=int, default=7, help='number of frames to predict during training')
 parser.add_argument('--n_eval', type=int, default=30, help='number of frames to predict during eval')
 parser.add_argument('--rnn_size', type=int, default=256, help='dimensionality of hidden layer')
 parser.add_argument('--prior_rnn_layers', type=int, default=1, help='number of layers')
@@ -41,8 +41,6 @@ parser.add_argument('--model', default='dcgan', help='model type (dcgan | vgg)')
 parser.add_argument('--data_threads', type=int, default=5, help='number of data loading threads')
 parser.add_argument('--num_digits', type=int, default=2, help='number of digits for moving mnist')
 parser.add_argument('--last_frame_skip', action='store_true', help='if true, skip connections go between frame t and frame t+t rather than last ground truth frame')
-
-
 
 opt = parser.parse_args()
 if opt.model_dir != '':
@@ -66,10 +64,10 @@ os.makedirs('%s/plots/' % opt.log_dir, exist_ok=True)
 
 print("Random Seed: ", opt.seed)
 random.seed(opt.seed)
-torch.manual_seed(opt.seed)
-#torch.cuda.manual_seed_all(opt.seed)
-dtype = torch.FloatTensor
-
+#torch.manual_seed(opt.seed)
+torch.cuda.manual_seed_all(opt.seed)
+#dtype = torch.FloatTensor
+dtype = torch.cuda.FloatTensor
 
 # ---------------- load the models  ----------------
 
@@ -143,12 +141,12 @@ def kl_criterion(mu1, logvar1, mu2, logvar2):
 print('-----------loss functions defined-----------')
 
 # --------- transfer to gpu ------------------------------------
-#frame_predictor.cuda()
-#posterior.cuda()
-#prior.cuda()
-#encoder.cuda()
-#decoder.cuda()
-#mse_criterion.cuda()
+frame_predictor.cuda()
+posterior.cuda()
+prior.cuda()
+encoder.cuda()
+decoder.cuda()
+mse_criterion.cuda()
 
 # --------- load a dataset ------------------------------------
 print('-----------loading data------------')
