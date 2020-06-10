@@ -4,6 +4,7 @@ import nimrod_to_cubes as n2c
 import numpy as np
 import pdb
 import os
+import matplotlib.pyplot as plt
 
 def main():
 
@@ -17,9 +18,9 @@ def main():
              for h in range(24) for dd in range(1, 32) for mo in range(8, 11)]
 
     # Choose variables
-    thrshld = 4  # rain rate threshold (mm/hr)
-    neighbourhood = 9   # neighbourhood size (e.g. 9 = 3x3)
-    timesteps = [30, 60]
+    thrshld = 1  # rain rate threshold (mm/hr)
+    neighbourhood = 9 #25   # neighbourhood size (e.g. 9 = 3x3)
+    timesteps = [30] #30, 60]
     #---------------------------------------------------------------------#
 
     files_exist = []
@@ -34,6 +35,9 @@ def main():
         fbs_on_worst_sum = 0
         count_nnfiles = 0
         count_onfiles = 0
+        all_radar = []
+        all_nn = []
+        all_on = []
         for file in files_exist:
             #print(file)
             dt = datetime.strptime(file, '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/%Y%m%d%H%M_u1096_ng_pp_precip_2km')
@@ -53,6 +57,9 @@ def main():
                 fbs, fbs_worst = calculate_fbs(ob_fraction, nc_fraction)
                 fbs_nn_sum += fbs
                 fbs_nn_worst_sum += fbs_worst
+                # Calculate all data values for generating PDFs
+                all_radar.append(r_cubelist[i].data)
+                all_nn.append(nn_cubelist[i].data)
 
             # Operational nowcast output
             n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps)
@@ -68,6 +75,8 @@ def main():
                 fbs2, fbs_worst2 = calculate_fbs(ob_fraction, nc_fraction)
                 fbs_on_sum += fbs2
                 fbs_on_worst_sum += fbs_worst2
+                # Calculate all data values for generating PDFs
+                all_on.append(n_cubelist[i].data)
 
         # Calculate FSS (following method in Roberts (2008))
         fss_nn = 1 - fbs_nn_sum /fbs_nn_worst_sum
@@ -78,7 +87,45 @@ def main():
     print('number of ON files: {}'.format(count_onfiles))
     print('number of NN files: {}'.format(count_nnfiles))
 
+    generate_pdf(all_radar, all_nn, all_on)
+
     #pdb.set_trace()
+
+def generate_pdf(all_radar, all_nn, all_on):
+    '''
+    Plot histogram comparing distribution of rain rate values in prediction vs truth
+    '''
+    bins=[0,1,2,4,8,16,32,64]
+
+    radar_values = np.array(all_radar).flatten()
+
+    nn_values = np.array(all_nn).flatten()
+
+    on_values = np.array(all_on).flatten()
+
+    plt.subplot(1,3,1)
+    #plt.hist(radar_values, bins, log=True) #density=True, log=True)
+    counts, _, patches = plt.hist(radar_values, bins, log=True) #density=True, log=True)
+    for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
+    plt.ylim((1000, 250000000))
+    plt.xlabel('Rain rate (mm/hr)')
+    plt.title('Observed values')
+    plt.subplot(1,3,2)
+    #plt.hist(nn_values, bins, log=True) #density=True, log=True)
+    counts, _, patches = plt.hist(nn_values, bins, log=True) #density=True, log=True)
+    for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
+    plt.ylim((1000, 250000000))
+    plt.xlabel('Rain rate (mm/hr)')
+    plt.title('ML Predicted values')
+    plt.subplot(1,3,3)
+    counts, _, patches = plt.hist(on_values, bins, log=True) #density=True, log=True)
+    for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
+    plt.ylim((1000, 250000000))
+    plt.xlabel('Rain rate (mm/hr)')
+    plt.title('ON Predicted values')
+    plt.show()
+
+    pdb.set_trace()
 
 
 def calculate_fbs(ob_fraction, nc_fraction):
