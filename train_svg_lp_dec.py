@@ -25,7 +25,7 @@ parser.add_argument('--model_dir', default='', help='base directory to save logs
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=25, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=50, help='number of epochs to train for')
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
 parser.add_argument('--epoch_size', type=int, default=600, help='epoch size')
 parser.add_argument('--image_width', type=int, default=128, help='the height / width of the input image to network')
@@ -41,7 +41,7 @@ parser.add_argument('--predictor_rnn_layers', type=int, default=2, help='number 
 parser.add_argument('--z_dim', type=int, default=10, help='dimensionality of z_t')
 parser.add_argument('--g_dim', type=int, default=128, help='dimensionality of encoder output vector and decoder input vector')
 parser.add_argument('--beta', type=float, default=0.0001, help='weighting on KL to prior')
-parser.add_argument('--model', default='vgg', help='model type (dcgan | vgg)')
+parser.add_argument('--model', default='dcgan', help='model type (dcgan | vgg)')
 parser.add_argument('--data_threads', type=int, default=5, help='number of data loading threads')
 parser.add_argument('--num_digits', type=int, default=2, help='number of digits for moving mnist')
 parser.add_argument('--last_frame_skip', default=True, help='if true, skip connections go between frame t and frame t+t rather than last ground truth frame') #action='store_true'
@@ -499,7 +499,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model6.pth' % opt.log_dir)
+        '%s/model5.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
