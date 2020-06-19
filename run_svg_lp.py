@@ -29,8 +29,7 @@ import matplotlib.pyplot as plt
 batch_size = 3 #, type=int, help='batch size')
 data_root = 'data' #', help='root directory for data')
 #model_path = 'logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/model4.pth'
-#model_path = 'logs/lp/radar/model=vgg128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=False-beta=0.0001000/model3.pth'
-#model_path = '/scratch/cbarth/phd/model131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
+model_path = '/scratch/cbarth/phd/model_519595.pth' #131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
 log_dir = 'logs' #, help='directory to save generations to')
 seed = 1 #', default=1, type=int, help='manual seed')
 n_past = 3 #', type=int, default=3, help='number of frames to condition on')
@@ -80,6 +79,31 @@ def main(startdate, model_path): #, enddate):
     #enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
     enddate = startdate + timedelta(minutes=15)
     dtime = startdate
+
+    # # ---------------- load the models  ----------------
+    # tmp = torch.load(model_path, map_location='cpu')
+    # frame_predictor = tmp['frame_predictor']
+    # posterior = tmp['posterior']
+    # prior = tmp['prior']
+    # frame_predictor.eval()
+    # prior.eval()
+    # posterior.eval()
+    # encoder = tmp['encoder']
+    # decoder = tmp['decoder']
+    # encoder.train()
+    # decoder.train()
+    # frame_predictor.batch_size = batch_size
+    # posterior.batch_size = batch_size
+    # prior.batch_size = batch_size
+    # g_dim = tmp['opt'].g_dim
+    # z_dim = tmp['opt'].z_dim
+    # num_digits = tmp['opt'].num_digits
+
+    # # ---------------- set the options ----------------
+    # dataset = tmp['opt'].dataset
+    # last_frame_skip = tmp['opt'].last_frame_skip
+    # channels = tmp['opt'].channels
+    # image_width = tmp['opt'].image_width
 
     while True:
         if dtime == enddate:
