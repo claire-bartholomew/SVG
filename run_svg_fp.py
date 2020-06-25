@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 batch_size = 3 #, type=int, help='batch size')
 data_root = 'data' #', help='root directory for data')
 #model_path = 'logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/model4.pth'
-model_path = '/scratch/cbarth/phd/model_fp.pth' #131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
+model_path = '/scratch/cbarth/phd/model131219.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_529994_fp.pth' #131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
 log_dir = 'logs' #, help='directory to save generations to')
 seed = 1 #', default=1, type=int, help='manual seed')
 n_past = 3 #', type=int, default=3, help='number of frames to condition on')

@@ -20,7 +20,7 @@ def main():
     # Choose variables
     thrshld = 1  # rain rate threshold (mm/hr)
     neighbourhood = 9 #25   # neighbourhood size (e.g. 9 = 3x3)
-    timesteps = [30] #30, 60]
+    timesteps = [60] #30, 60]
     #---------------------------------------------------------------------#
 
     files_exist = []
@@ -33,8 +33,7 @@ def main():
         fbs_nn_worst_sum = 0
         fbs_on_sum = 0
         fbs_on_worst_sum = 0
-        count_nnfiles = 0
-        count_onfiles = 0
+        count_files = 0
         all_radar = []
         all_nn = []
         all_on = []
@@ -46,46 +45,40 @@ def main():
             # Load data and calculate FBS scores:
             # Neural network output
             nn_cubelist, skip0 = load_nn_pred(dt_str, timesteps)
-            if skip0 == False:
-                count_nnfiles += 1
+            # Operational nowcast output
+            n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps)
+
+            if ((skip0 == False) & (skip == False)):
+                count_files += 1
                 r_cubelist = load_radar(dt, dt_str, sample_points, timesteps)
-                # Generate fractions over grid then calculate FBS and FBSworst
+                # Generate fractions over grid
                 ob_fraction = generate_fractions(r_cubelist[i],
                                         n_size=neighbourhood, threshold=thrshld)
-                nc_fraction = generate_fractions(nn_cubelist[i],
+                nn_nc_fraction = generate_fractions(nn_cubelist[i],
                                         n_size=neighbourhood, threshold=thrshld)
-                fbs, fbs_worst = calculate_fbs(ob_fraction, nc_fraction)
+                on_nc_fraction = generate_fractions(n_cubelist[i],
+                                        n_size=neighbourhood, threshold=thrshld)
+
+                # Calculate FBS and FBSworst
+                fbs, fbs_worst = calculate_fbs(ob_fraction, nn_nc_fraction)
                 fbs_nn_sum += fbs
                 fbs_nn_worst_sum += fbs_worst
+                fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_nc_fraction)
+                fbs_on_sum += fbs_on
+                fbs_on_worst_sum += fbs_worst_on
+
                 # Calculate all data values for generating PDFs
                 all_radar.append(r_cubelist[i].data)
                 all_nn.append(nn_cubelist[i].data)
-
-            # Operational nowcast output
-            n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps)
-            if skip == False:
-                count_onfiles += 1
-                r_cubelist = load_radar(dt, dt_str, sample_points, timesteps)
-
-                # Generate fractions over grid then calculate FBS and FBSworst
-                ob_fraction = generate_fractions(r_cubelist[i],
-                                        n_size=neighbourhood, threshold=thrshld)
-                nc_fraction = generate_fractions(n_cubelist[i],
-                                        n_size=neighbourhood, threshold=thrshld)
-                fbs2, fbs_worst2 = calculate_fbs(ob_fraction, nc_fraction)
-                fbs_on_sum += fbs2
-                fbs_on_worst_sum += fbs_worst2
-                # Calculate all data values for generating PDFs
                 all_on.append(n_cubelist[i].data)
-
+       
         # Calculate FSS (following method in Roberts (2008))
         fss_nn = 1 - fbs_nn_sum /fbs_nn_worst_sum
         print('FSS for NN at t+{} = {}'.format(flt, fss_nn))
         fss_on = 1 - fbs_on_sum /fbs_on_worst_sum
         print('FSS for Op Ncst at t+{} = {}'.format(flt, fss_on))
 
-    print('number of ON files: {}'.format(count_onfiles))
-    print('number of NN files: {}'.format(count_nnfiles))
+    print('number of files: {}'.format(count_files))
 
     generate_pdf(all_radar, all_nn, all_on)
 

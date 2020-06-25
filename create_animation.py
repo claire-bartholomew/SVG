@@ -13,15 +13,16 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201909291300'
-    prior = 'fp'
-    model_path = '/scratch/cbarth/phd/model_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    dt_str = '201908141630' #201909291300'
+    prior = 'lp'
+    model_path = '/scratch/cbarth/phd/'
+    model = 'model585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
     #--------------------------------------------------------------
 
     if prior == 'fp':
         import run_svg_fp as run_svg
     else:
-        import run_svg_lp as run_svg
+        import run_svg_lp2 as run_svg
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -29,7 +30,7 @@ def main():
 
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
-    run_svg.main(dt, model_path)
+    run_svg.main(dt, model_path, model)
 
     # Neural network output
     nn_cubelist = load_nn_pred(dt_str)

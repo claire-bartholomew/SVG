@@ -30,7 +30,7 @@ batch_size = 3 #, type=int, help='batch size')
 data_root = 'data' #', help='root directory for data')
 #model_path = 'logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/model4.pth'
 #model_path = 'logs/lp/radar/model=vgg128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=False-beta=0.0001000/model3.pth'
-model_path = '/scratch/cbarth/phd/model131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
+model_path = '/scratch/cbarth/phd/model566185.pth' #model131219.pth' 
 log_dir = 'logs' #, help='directory to save generations to')
 seed = 1 #', default=1, type=int, help='manual seed')
 n_past = 3 #', type=int, default=3, help='number of frames to condition on')
@@ -76,6 +76,7 @@ image_width = tmp['opt'].image_width
 #===============================================================================
 def main(startdate, enddate):
 
+    mod = 'model566185'
     #startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
     #enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
     dtime = startdate
@@ -131,7 +132,7 @@ def main(startdate, enddate):
                     #if t == 0:
                     #    qplt.contourf(pred_cube[0])
                     #    plt.show()
-                iris.save(pred_cube, "plots_nn_T{}.nc".format(dt_str))
+                iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, mod))
 
             dtime = dtime + timedelta(minutes=15)
 
@@ -294,6 +295,6 @@ def make_gifs(x, name):
     return(ssim, x, posterior_gen, all_gen)
 
 if __name__ == "__main__":
-    startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
-    enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
+    startdate = datetime.strptime('201909061845', '%Y%m%d%H%M')
+    enddate = datetime.strptime('201911010000', '%Y%m%d%H%M')
     main(startdate, enddate)
