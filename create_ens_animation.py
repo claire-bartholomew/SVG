@@ -26,7 +26,7 @@ def main():
     if prior == 'fp':
         import run_svg_fp as run_svg
     else:
-        import run_svg_lp2 as run_svg
+        import run_svg_lp as run_svg
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),

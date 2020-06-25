@@ -47,35 +47,14 @@ torch.manual_seed(seed)
 #torch.cuda.manual_seed_all(opt.seed)
 dtype = torch.FloatTensor
 
-# ---------------- load the models  ----------------
-tmp = torch.load(model_path, map_location='cpu')
-frame_predictor = tmp['frame_predictor']
-posterior = tmp['posterior']
-frame_predictor.eval()
-posterior.eval()
-encoder = tmp['encoder']
-decoder = tmp['decoder']
-encoder.eval()
-decoder.eval()
-frame_predictor.batch_size = batch_size
-posterior.batch_size = batch_size
-g_dim = tmp['opt'].g_dim
-z_dim = tmp['opt'].z_dim
-num_digits = tmp['opt'].num_digits
-
-# ---------------- set the options ----------------
-dataset = tmp['opt'].dataset
-last_frame_skip = tmp['opt'].last_frame_skip
-channels = tmp['opt'].channels
-image_width = tmp['opt'].image_width
-
 #===============================================================================
-def main(startdate, model_path): #, enddate):
+def main(startdate, model_path, model):
 
-    #startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
-    #enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
+    print('Model = ', model_path, model)
     enddate = startdate + timedelta(minutes=15)
     dtime = startdate
+
+    frame_predictor, posterior, encoder, decoder, last_frame_skip = load_model(model_path, model)
 
     while True:
         if dtime == enddate:
@@ -111,7 +90,7 @@ def main(startdate, model_path): #, enddate):
                 dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
                 # generate predictions
                 test_x = next(testing_batch_generator)
-                ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test')
+                ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test', frame_predictor, posterior, encoder, decoder, last_frame_skip)
 
                 batch_number = 0 #in range(1): #batch_size):
                 # Find index of sample with highest SSIM score
@@ -128,7 +107,7 @@ def main(startdate, model_path): #, enddate):
                     #if t == 0:
                     #    qplt.contourf(pred_cube[0])
                     #    plt.show()
-                iris.save(pred_cube, "plots_nn_T{}.nc".format(dt_str))
+                iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
 
             dtime = dtime + timedelta(minutes=15)
 
@@ -156,20 +135,7 @@ def prep_data(files, n_eval):
 
     # only keep filenames where the right number of  consecutive files exist at 5 min intervals
     sorted_files = list(sorted_files1[0:0+n_eval]) #chunks(sorted_files1, n_eval))
-    #for group in sorted_files:
-    #    if len(group) < n_eval:
-    #        sorted_files.remove(group)
-    #    else:
-    #        t0 = group[0].find('201')
-    #        dt1 = datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
-    #        t9 = group[n_eval-1].find('201')
-    #        dt2 = datetime.strptime(group[n_eval-1][t9:t9+12], '%Y%m%d%H%M')
-    #        #print(dt1, dt2)
-    #        if (dt2-dt1 != timedelta(minutes=n_eval*5)):
-    #            print(dt2-dt1, 'remove files')
-    #            sorted_files.remove(group)
 
-    #start_date = []
     dataset = []
     #for fn in sorted_files:
     fn = sorted_files #[0]
@@ -213,6 +179,31 @@ def prep_data(files, n_eval):
 
     return loader, cube1, start_date, skip
 
+def load_model(model_path, model):
+    # ---------------- load the models  ----------------
+    tmp = torch.load('{}{}'.format(model_path, model), map_location='cpu')
+    frame_predictor = tmp['frame_predictor']
+    posterior = tmp['posterior']
+    frame_predictor.eval()
+    posterior.eval()
+    encoder = tmp['encoder']
+    decoder = tmp['decoder']
+    encoder.eval()
+    decoder.eval()
+    frame_predictor.batch_size = batch_size
+    posterior.batch_size = batch_size
+    g_dim = tmp['opt'].g_dim
+    z_dim = tmp['opt'].z_dim
+    num_digits = tmp['opt'].num_digits
+
+    # ---------------- set the options ----------------
+    dataset = tmp['opt'].dataset
+    last_frame_skip = tmp['opt'].last_frame_skip
+    channels = tmp['opt'].channels
+    image_width = tmp['opt'].image_width
+
+    return frame_predictor, posterior, encoder, decoder, last_frame_skip
+
 # -------------------------------------------------------------
 def get_testing_batch(test_loader):
      while True:
@@ -223,7 +214,7 @@ def get_testing_batch(test_loader):
                  yield batch
 
 # --------- eval funtions ------------------------------------
-def make_gifs(x, name):
+def make_gifs(x, name, frame_predictor, posterior, encoder, decoder, last_frame_skip):
     # get approx posterior sample
     frame_predictor.hidden = frame_predictor.init_hidden()
     posterior.hidden = posterior.init_hidden()
@@ -288,6 +279,7 @@ def make_gifs(x, name):
 
 if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
-    model_path = '/scratch/cbarth/phd/model131219.pth'
+    model_path = '/scratch/cbarth/phd/'
+    model = 'model131219.pth'
     #enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
-    main(startdate, model_path) #, enddate)
+    main(startdate, model_path, model) #, enddate)

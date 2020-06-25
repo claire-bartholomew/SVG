@@ -29,7 +29,7 @@ import matplotlib.pyplot as plt
 batch_size = 3 #, type=int, help='batch size')
 data_root = 'data' #', help='root directory for data')
 #model_path = 'logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/model4.pth'
-model_path = '/scratch/cbarth/phd/model585435.pth' #582525.pth' #566185.pth' #model131219.pth' #_519595.pth' #131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
+#model_path = '/scratch/cbarth/phd/model585435.pth' #582525.pth' #566185.pth' #model131219.pth' #_519595.pth' #131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
 log_dir = 'logs' #, help='directory to save generations to')
 seed = 1 #', default=1, type=int, help='manual seed')
 n_past = 3 #', type=int, default=3, help='number of frames to condition on')
@@ -47,36 +47,14 @@ torch.manual_seed(seed)
 #torch.cuda.manual_seed_all(opt.seed)
 dtype = torch.FloatTensor
 
-# ---------------- load the models  ----------------
-tmp = torch.load(model_path, map_location='cpu')
-frame_predictor = tmp['frame_predictor']
-posterior = tmp['posterior']
-prior = tmp['prior']
-frame_predictor.eval()
-prior.eval()
-posterior.eval()
-encoder = tmp['encoder']
-decoder = tmp['decoder']
-encoder.train()
-decoder.train()
-frame_predictor.batch_size = batch_size
-posterior.batch_size = batch_size
-prior.batch_size = batch_size
-g_dim = tmp['opt'].g_dim
-z_dim = tmp['opt'].z_dim
-num_digits = tmp['opt'].num_digits
-
-# ---------------- set the options ----------------
-dataset = tmp['opt'].dataset
-last_frame_skip = tmp['opt'].last_frame_skip
-channels = tmp['opt'].channels
-image_width = tmp['opt'].image_width
-
 #===============================================================================
-def main(startdate, model_path): #, enddate):
+def main(startdate, model_path, model): #, enddate):
 
+    print('Model = ', model_path, model)
     enddate = startdate + timedelta(minutes=15)
     dtime = startdate
+
+    frame_predictor, posterior, prior, encoder, decoder, last_frame_skip = load_model(model_path, model)
 
     while True:
         if dtime == enddate:
@@ -112,7 +90,7 @@ def main(startdate, model_path): #, enddate):
                 dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
                 # generate predictions
                 test_x = next(testing_batch_generator)
-                ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test')
+                ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test', frame_predictor, posterior, prior, encoder, decoder, last_frame_skip)
 
                 batch_number = 0 #in range(1): #batch_size):
                 # Find index of sample with highest SSIM score
@@ -129,9 +107,38 @@ def main(startdate, model_path): #, enddate):
                     #if t == 0:
                     #    qplt.contourf(pred_cube[0])
                     #    plt.show()
-                iris.save(pred_cube, "plots_nn_T{}.nc".format(dt_str))
+                print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
+                iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
 
             dtime = dtime + timedelta(minutes=15)
+
+def load_model(model_path, model):
+    # ---------------- load the models  ----------------
+    tmp = torch.load('{}{}'.format(model_path, model), map_location='cpu')
+    frame_predictor = tmp['frame_predictor']
+    posterior = tmp['posterior']
+    prior = tmp['prior']
+    frame_predictor.eval()
+    prior.eval()
+    posterior.eval()
+    encoder = tmp['encoder']
+    decoder = tmp['decoder']
+    encoder.train()
+    decoder.train()
+    frame_predictor.batch_size = batch_size
+    posterior.batch_size = batch_size
+    prior.batch_size = batch_size
+    g_dim = tmp['opt'].g_dim
+    z_dim = tmp['opt'].z_dim
+    num_digits = tmp['opt'].num_digits
+
+    # ---------------- set the options ----------------
+    dataset = tmp['opt'].dataset
+    last_frame_skip = tmp['opt'].last_frame_skip
+    channels = tmp['opt'].channels
+    image_width = tmp['opt'].image_width
+
+    return frame_predictor, posterior, prior, encoder, decoder, last_frame_skip
 
 # --------- load a dataset ------------------------------------
 def chunks(l, n):
@@ -224,7 +231,7 @@ def get_testing_batch(test_loader):
                  yield batch
 
 # --------- eval funtions ------------------------------------
-def make_gifs(x, name):
+def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last_frame_skip):
     # get approx posterior sample
     frame_predictor.hidden = frame_predictor.init_hidden()
     posterior.hidden = posterior.init_hidden()
@@ -293,6 +300,7 @@ def make_gifs(x, name):
 
 if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
-    model_path = '/scratch/cbarth/phd/model131219.pth'
+    model_path = '/scratch/cbarth/phd/'
+    model = 'model131219.pth'
     #enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
-    main(startdate, model_path) #, enddate)
+    main(startdate, model_path, model) #, enddate)
