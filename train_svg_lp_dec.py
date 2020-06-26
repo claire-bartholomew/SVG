@@ -209,12 +209,14 @@ def prep_data(files, filedir):
         #pdb.set_trace()
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
 
-        # Set limit of large values - have asked Tim Darlington about these large values
         data[np.where(data < 0)] = 0.
-        data[np.where(data > 32)] = 32.
+        #data[np.where(data > 32)] = 32.
+        maxi = np.maximum(data)
+        print('max value in data = ', maxi)
 
         # Normalise data
-        data = data / 32.
+        #data = data / 32.
+        data = data / maxi
 
         if len(data) < 10:
             print(fn)
