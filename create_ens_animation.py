@@ -34,8 +34,8 @@ def main():
 
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
-    for model in [model1, model2, model3, model4, model5]:
-        run_svg.main(dt, model_path, model)
+    #for model in [model1, model2, model3, model4, model5]:
+    #    run_svg.main(dt, model_path, model)
 
     # Neural network output
     nn_cubelist1 = load_nn_pred(dt_str, model1)
@@ -120,7 +120,7 @@ def animate(r_cubelist, nn_cubelist1, nn_cubelist2, nn_cubelist3, nn_cubelist4, 
             cf2 = subplot(prob_cube, 'Prob > {} mm/hr'.format(threshold), levels2, colors2)
 
             # Add axes to the figure, to place the colour bar [left, bottom, width, height] (of cbar)
-            colorbar_axes = fig.add_axes([0.15, 0.1, 0.73, 0.03])
+            colorbar_axes = fig.add_axes([0.15, 0.05, 0.73, 0.03])
             # Add the colour bar
             cbar = plt.colorbar(cf, colorbar_axes, orientation='horizontal')
             cbar.ax.set_xlabel('Rain rate (mm/hr)')
