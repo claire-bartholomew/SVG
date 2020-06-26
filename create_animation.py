@@ -16,7 +16,7 @@ def main():
     dt_str = '201908141630' #201909291300'
     prior = 'fp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model_529994_fp.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    model = 'model593279.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
     #--------------------------------------------------------------
 
     if prior == 'fp':
