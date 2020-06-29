@@ -211,7 +211,7 @@ def prep_data(files, filedir):
 
         data[np.where(data < 0)] = 0.
         #data[np.where(data > 32)] = 32.
-        maxi = np.maximum(data)
+        maxi = np.amax(data)
         print('max value in data = ', maxi)
 
         # Normalise data
