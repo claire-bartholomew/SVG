@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201908141630' #201909291300'
+    dt_str = '201909291300' #201908141630' 
     prior = 'fp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model593279.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    model = 'model593279.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
     #--------------------------------------------------------------
 
     if prior == 'fp':
@@ -33,7 +33,7 @@ def main():
     run_svg.main(dt, model_path, model)
 
     # Neural network output
-    nn_cubelist = load_nn_pred(dt_str)
+    nn_cubelist = load_nn_pred(dt_str, model)
     # Radar sequence
     r_cubelist = load_radar(dt, dt_str, sample_points)
     # Operational nowcast output
@@ -90,9 +90,9 @@ def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior):
             writer.grab_frame()
     plt.close()
 
-def load_nn_pred(dt_str):
+def load_nn_pred(dt_str, model):
     nn_cubelist = []
-    nn_f = '/data/cr1/cbarth/phd/SVG/plots_nn_T{}.nc'.format(dt_str) #model_output/model131219/nn_T{}.nc'.format(dt_str)
+    nn_f = '/data/cr1/cbarth/phd/SVG/plots_nn_T{}_{}.nc'.format(dt_str, model[:-4])
     print(nn_f)
     # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
     cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
