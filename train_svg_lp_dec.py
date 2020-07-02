@@ -215,13 +215,13 @@ def prep_data(files, filedir):
 
         # Normalise data
         #data = data / 32.
-        maxi = 361.06317874152296
-        data = data / maxi
+        #maxi = 361.06317874152296
+        #data = data / maxi
 
         # Standardise data (stats calculated from rainy days list)
-        #mean = 0.217
-        #std = 0.875
-        #data = (data - mean) / std
+        mean = 0.217
+        std = 0.875
+        data = (data - mean) / std
 
         if len(data) < 10:
             print(fn)
