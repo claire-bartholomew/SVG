@@ -15,15 +15,15 @@ class lstm(nn.Module):
         self.lstm = nn.ModuleList([nn.LSTMCell(hidden_size, hidden_size) for i in range(self.n_layers)])
         self.output = nn.Sequential(
                 nn.Linear(hidden_size, output_size),
-                #nn.BatchNorm1d(output_size),
+                nn.BatchNorm1d(output_size), #comment out for lp
                 nn.Tanh())
         self.hidden = self.init_hidden()
 
     def init_hidden(self):
         hidden = []
         for i in range(self.n_layers):
-            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size)), #.cuda()),
-                           Variable(torch.zeros(self.batch_size, self.hidden_size)))) #.cuda())))
+            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size).cuda()),
+                           Variable(torch.zeros(self.batch_size, self.hidden_size).cuda())))
         return hidden
 
     def forward(self, input):
@@ -52,8 +52,8 @@ class gaussian_lstm(nn.Module):
     def init_hidden(self):
         hidden = []
         for i in range(self.n_layers):
-            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size)), #.cuda()),
-                           Variable(torch.zeros(self.batch_size, self.hidden_size)))) #.cuda())))
+            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size).cuda()),
+                           Variable(torch.zeros(self.batch_size, self.hidden_size).cuda())))
         return hidden
 
     def reparameterize(self, mu, logvar):
@@ -70,7 +70,5 @@ class gaussian_lstm(nn.Module):
         mu = self.mu_net(h_in)
         logvar = self.logvar_net(h_in)
         z = self.reparameterize(mu, logvar)
-        #pdb.set_trace()
-
 
         return z, mu, logvar

@@ -8,26 +8,26 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 import utils
 import itertools
-import progressbar
+#import progressbar
 import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
 parser.add_argument('--beta1', default=0.9, type=float, help='momentum term for adam')
-parser.add_argument('--batch_size', default=100, type=int, help='batch size')
+parser.add_argument('--batch_size', default=20, type=int, help='batch size')
 parser.add_argument('--log_dir', default='logs/fp', help='base directory to save logs')
 parser.add_argument('--model_dir', default='', help='base directory to save logs')
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=300, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=2, help='number of epochs to train for') #50
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
-parser.add_argument('--epoch_size', type=int, default=600, help='epoch size')
+parser.add_argument('--epoch_size', type=int, default=100, help='epoch size') #2772
 parser.add_argument('--image_width', type=int, default=64, help='the height / width of the input image to network')
 parser.add_argument('--channels', default=1, type=int)
-parser.add_argument('--dataset', default='smmnist', help='dataset to train with')
-parser.add_argument('--n_past', type=int, default=5, help='number of frames to condition on')
-parser.add_argument('--n_future', type=int, default=10, help='number of frames to predict')
+parser.add_argument('--dataset', default='radar', help='dataset to train with')
+parser.add_argument('--n_past', type=int, default=3, help='number of frames to condition on')
+parser.add_argument('--n_future', type=int, default=7, help='number of frames to predict')
 parser.add_argument('--n_eval', type=int, default=30, help='number of frames to predict at eval time')
 parser.add_argument('--rnn_size', type=int, default=256, help='dimensionality of hidden layer')
 parser.add_argument('--posterior_rnn_layers', type=int, default=1, help='number of layers')
@@ -65,7 +65,6 @@ random.seed(opt.seed)
 torch.manual_seed(opt.seed)
 torch.cuda.manual_seed_all(opt.seed)
 dtype = torch.cuda.FloatTensor
-
 
 # ---------------- load the models  ----------------
 
@@ -126,7 +125,6 @@ def kl_criterion(mu, logvar):
   KLD /= opt.batch_size  
   return KLD
 
-
 # --------- transfer to gpu ------------------------------------
 frame_predictor.cuda()
 posterior.cuda()
@@ -135,20 +133,20 @@ decoder.cuda()
 mse_criterion.cuda()
 
 # --------- load a dataset ------------------------------------
-train_data, test_data = utils.load_dataset(opt)
-
+#train_data, test_data = utils.load_dataset(opt)
+train_data = utils.load_dataset(opt)
 train_loader = DataLoader(train_data,
                           num_workers=opt.data_threads,
                           batch_size=opt.batch_size,
                           shuffle=True,
                           drop_last=True,
                           pin_memory=True)
-test_loader = DataLoader(test_data,
-                         num_workers=opt.data_threads,
-                         batch_size=opt.batch_size,
-                         shuffle=True,
-                         drop_last=True,
-                         pin_memory=True)
+#test_loader = DataLoader(test_data,
+#                         num_workers=opt.data_threads,
+#                         batch_size=opt.batch_size,
+#                         shuffle=True,
+#                         drop_last=True,
+#                         pin_memory=True)
 
 def get_training_batch():
     while True:
@@ -157,12 +155,12 @@ def get_training_batch():
             yield batch
 training_batch_generator = get_training_batch()
 
-def get_testing_batch():
-    while True:
-        for sequence in test_loader:
-            batch = utils.normalize_data(opt, dtype, sequence)
-            yield batch 
-testing_batch_generator = get_testing_batch()
+#def get_testing_batch():
+#    while True:
+#        for sequence in test_loader:
+#            batch = utils.normalize_data(opt, dtype, sequence)
+#            yield batch 
+#testing_batch_generator = get_testing_batch()
 
 # --------- plotting funtions ------------------------------------
 def plot(x, epoch):
@@ -255,7 +253,6 @@ def plot_rec(x, epoch):
     fname = '%s/gen/rec_%d.png' % (opt.log_dir, epoch) 
     utils.save_tensors_image(fname, to_plot)
 
-
 # --------- training funtions ------------------------------------
 def train(x):
     frame_predictor.zero_grad()
@@ -300,9 +297,9 @@ for epoch in range(opt.niter):
     decoder.train()
     epoch_mse = 0
     epoch_kld = 0
-    progress = progressbar.ProgressBar(max_value=opt.epoch_size).start()
+    #progress = progressbar.ProgressBar(max_value=opt.epoch_size).start()
     for i in range(opt.epoch_size):
-        progress.update(i+1)
+        #progress.update(i+1)
         x = next(training_batch_generator)
 
         # train frame_predictor 
@@ -310,9 +307,8 @@ for epoch in range(opt.niter):
         epoch_mse += mse
         epoch_kld += kld
 
-
-    progress.finish()
-    utils.clear_progressbar()
+    #progress.finish()
+    #utils.clear_progressbar()
 
     print('[%02d] mse loss: %.5f | kld loss: %.5f (%d)' % (epoch, epoch_mse/opt.epoch_size, epoch_kld/opt.epoch_size, epoch*opt.epoch_size*opt.batch_size))
 
@@ -321,9 +317,9 @@ for epoch in range(opt.niter):
     encoder.eval()
     decoder.eval()
     posterior.eval()
-    x = next(testing_batch_generator)
-    plot(x, epoch)
-    plot_rec(x, epoch)
+    #x = next(testing_batch_generator)
+    #plot(x, epoch)
+    #plot_rec(x, epoch)
 
     # save the model
     torch.save({

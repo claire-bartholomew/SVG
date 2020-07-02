@@ -21,9 +21,9 @@ parser.add_argument('--model_dir', default='', help='base directory to save logs
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=50, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=2, help='number of epochs to train for') #50
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
-parser.add_argument('--epoch_size', type=int, default=2772, help='epoch size')
+parser.add_argument('--epoch_size', type=int, default=200, help='epoch size') #2772
 parser.add_argument('--image_width', type=int, default=64, help='the height / width of the input image to network')
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--dataset', default='smmnist', help='dataset to train with')
@@ -150,7 +150,8 @@ mse_criterion.cuda()
 
 # --------- load a dataset ------------------------------------
 print('-----------loading data------------')
-train_data, test_data = utils.load_dataset(opt)
+#train_data, test_data = utils.load_dataset(opt)
+train_data = utils.load_dataset(opt)
 print('training data shape = ', np.shape(train_data))
 
 train_loader = DataLoader(train_data,
@@ -159,12 +160,12 @@ train_loader = DataLoader(train_data,
                           shuffle=True,
                           drop_last=True,
                           pin_memory=True)
-test_loader = DataLoader(test_data,
-                         num_workers=opt.data_threads,
-                         batch_size=opt.batch_size,
-                         shuffle=True,
-                         drop_last=True,
-                         pin_memory=True)
+#test_loader = DataLoader(test_data,
+#                         num_workers=opt.data_threads,
+#                         batch_size=opt.batch_size,
+#                         shuffle=True,
+#                         drop_last=True,
+#                         pin_memory=True)
 
 def get_training_batch():
     while True:
@@ -175,12 +176,12 @@ def get_training_batch():
             yield batch
 training_batch_generator = get_training_batch()
 
-def get_testing_batch():
-    while True:
-        for sequence in test_loader:
-            batch = utils.normalize_data(opt, dtype, sequence)
-            yield batch 
-testing_batch_generator = get_testing_batch()
+#def get_testing_batch():
+#    while True:
+#        for sequence in test_loader:
+#            batch = utils.normalize_data(opt, dtype, sequence)
+#            yield batch 
+#testing_batch_generator = get_testing_batch()
 
 # --------- plotting funtions ------------------------------------
 def plot(x, epoch):
@@ -365,14 +366,14 @@ for epoch in range(opt.niter):
 
     # plot some stuff
     frame_predictor.eval()
-    #encoder.eval()
-    #decoder.eval()
+    encoder.eval()
+    decoder.eval()
     posterior.eval()
     prior.eval()
     
-    x = next(testing_batch_generator)
-    plot(x, epoch)
-    plot_rec(x, epoch)
+    #x = next(testing_batch_generator)
+    #plot(x, epoch)
+    #plot_rec(x, epoch)
 
     # save the model
     torch.save({

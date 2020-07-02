@@ -19,15 +19,15 @@ import time
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
 parser.add_argument('--beta1', default=0.9, type=float, help='momentum term for adam')
-parser.add_argument('--batch_size', default=100, type=int, help='batch size')
+parser.add_argument('--batch_size', default=20, type=int, help='batch size')
 parser.add_argument('--log_dir', default='logs/lp', help='base directory to save logs')
 parser.add_argument('--model_dir', default='', help='base directory to save logs')
 parser.add_argument('--name', default='', help='identifier for directory')
 parser.add_argument('--data_root', default='data', help='root directory for data')
 parser.add_argument('--optimizer', default='adam', help='optimizer to train with')
-parser.add_argument('--niter', type=int, default=3, help='number of epochs to train for')
+parser.add_argument('--niter', type=int, default=50, help='number of epochs to train for')
 parser.add_argument('--seed', default=1, type=int, help='manual seed')
-parser.add_argument('--epoch_size', type=int, default=10800, help='epoch size')
+parser.add_argument('--epoch_size', type=int, default=2772, help='epoch size')
 parser.add_argument('--image_width', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--dataset', default='radar', help='dataset to train with')
@@ -242,25 +242,27 @@ def prep_data(files, filedir, seq_len):
                         pin_memory=True)
     return loader
 
-#rainy_dates = ['0102', '0103', '0104', '0114', '0115', '0116', '0117', '0121',
-#               '0122', '0123', '0124', '0128', '0130', '0131', '0208', '0209',
-#               '0210', '0212', '0214', '0218', '0304', '0305', '0309', '0310',
-#               '0311', '0314', '0315', '0322', '0326', '0327', '0329', '0330',
-#               '0401', '0402', '0403', '0404', '0409', '0424', '0427', '0501',
-#               '0512', '0602', '0613', '0619', '0727', '0728', '0729', '0809',
-#               '0810', '0811', '0812', '0815', '0818', '0824', '0826', '0910',
-#               '0911', '0915', '0917', '0918', '0919', '0920', '0922', '1007',
-#               '1008', '1011', '1012', '1013', '1014', '1031', '1102', '1103',
-#               '1106', '1107', '1108', '1109', '1110', '1112', '1113', '1120',
-#               '1127', '1128', '1129', '1130', '1201', '1202', '1204', '1205',
-#               '1206', '1207', '1208', '1215', '1216', '1217', '1218', '1219',
-#               '1220', '1221']
+rainy_dates = ['0102', '0103', '0104', '0114', '0115', '0116', '0117', '0121',
+               '0122', '0123', '0124', '0128', '0130', '0131', '0208', '0209',
+               '0210', '0212', '0214', '0218', '0304', '0305', '0309', '0310',
+               '0311', '0314', '0315', '0322', '0326', '0327', '0329', '0330',
+               '0401', '0402', '0403', '0404', '0409', '0424', '0427', '0501',
+               '0512', '0602', '0613', '0619', '0727', '0728', '0729', '0809',
+               '0810', '0811', '0812', '0815', '0818', '0824', '0826', '0910',
+               '0911', '0915', '0917', '0918', '0919', '0920', '0922', '1007',
+               '1008', '1011', '1012', '1013', '1014', '1031', '1102', '1103',
+               '1106', '1107', '1108', '1109', '1110', '1112', '1113', '1120',
+               '1127', '1128', '1129', '1130', '1201', '1202', '1204', '1205',
+               '1206', '1207', '1208', '1215', '1216', '1217', '1218', '1219',
+               '1220', '1221']
 
 val_dates = ['1222']
 
 # List all possible radar files in range and find those that exist
-files_t = [f'/nobackup/sccsb/radar/train/20{yy:02}{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
-           for mi in range(0, 60, 5) for h in range(24) for dd in range(1, 32) for mo in range(1, 13) for yy in [18]] #17]]
+#files_t = [f'/nobackup/sccsb/radar/train/20{yy:02}{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+#           for mi in range(0, 60, 5) for h in range(24) for dd in range(1, 32) for mo in range(1, 13) for yy in [18]] #17]]
+files_t = [f'/nobackup/sccsb/radar/train/20{yy:02}{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+           for mi in range(0, 60, 5) for h in range(24) for mmdd in rainy_dates for yy in [18]] #17]]
 
 list_train = []
 for file in files_t:
