@@ -31,12 +31,7 @@ def prep_data(files, filedir):
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     timeformat = "%Y%m%d%H%M"
-    if filedir == 'train':
-        regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
-    elif filedir == 'test':
-        regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
-    elif filedir == 'may':
-        regex = re.compile("^/nobackup/sccsb/radar/may/(\d*)")
+    regex = re.compile("^training_data/(\d*)")
 
     def gettimestamp(thestring):
         m = regex.search(thestring)
@@ -118,7 +113,7 @@ rainy_dates = ['0102', '0103', '0104', '0114', '0115', '0116', '0117', '0121',
 #val_dates = ['1222']
 
 # List all possible radar files in range and find those that exist
-files_t = [f'/nobackup/sccsb/radar/train/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+files_t = [f'training_data/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
            for mi in range(0,60,5) for h in range(24) for mmdd in rainy_dates] #d in range(25) for mo in range(5,6)]
 
 list_train = []
