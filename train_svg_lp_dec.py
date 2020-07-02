@@ -70,11 +70,11 @@ os.makedirs('%s/gen/' % opt.log_dir, exist_ok=True)
 os.makedirs('%s/plots/' % opt.log_dir, exist_ok=True)
 
 print("Random Seed: ", opt.seed)
-random.seed(opt.seed)
+#random.seed(opt.seed)
+np.random.seed(opt.seed) #random seed testing - put this line in place of one above
 torch.manual_seed(opt.seed)
 torch.cuda.manual_seed_all(opt.seed)
 dtype = torch.cuda.FloatTensor
-
 
 # ---------------- load the models  ----------------
 
@@ -162,7 +162,6 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-
 def prep_data(files, filedir):
 
     # Regrid to a resolution x4 lower
@@ -210,13 +209,19 @@ def prep_data(files, filedir):
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
 
         data[np.where(data < 0)] = 0.
-        #data[np.where(data > 32)] = 32.
-        maxi = np.amax(data)
-        print('max value in data = ', maxi)
+        data[np.where(data > 32)] = 32.
+        #maxi = np.amax(data)
+        #print('max value in data = ', maxi)
 
         # Normalise data
-        #data = data / 32.
-        data = data / maxi
+        data = data / 32.
+        #maxi = 361.06317874152296
+        #data = data / maxi
+
+        # Standardise data (stats calculated from rainy days list)
+        #mean = 0.217
+        #std = 0.875
+        #data = (data - mean) / std
 
         if len(data) < 10:
             print(fn)
@@ -226,6 +231,8 @@ def prep_data(files, filedir):
             dataset.append(data)
 
     print('count', count)
+    #print('data max', np.amax(dataset))
+    #dataset = dataset / np.amax(dataset)
 
     print('size of data:', len(dataset), np.shape(dataset))
 
@@ -501,7 +508,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model7.pth' % opt.log_dir)
+        '%s/model9.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
