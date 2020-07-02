@@ -13,10 +13,11 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201909291300' #201908141630' #201909291300'
+    dt_str = '201908141630' #201909291300' #201908141630' #201909291300'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    model1 = 'model131219.pth'
+    #model1 = 'model131219.pth'
+    model1 = 'model598965.pth'
     model2 = 'model585435.pth'
     model3 = 'model566185.pth'
     model4 = 'model582525.pth'
@@ -34,8 +35,8 @@ def main():
 
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
-    #for model in [model1, model2, model3, model4, model5]:
-    #    run_svg.main(dt, model_path, model)
+    for model in [model1, model2, model3, model4, model5]:
+        run_svg.main(dt, model_path, model)
 
     # Neural network output
     nn_cubelist1 = load_nn_pred(dt_str, model1)
@@ -139,7 +140,7 @@ def subplot(data, title, levels, colors):
 
 def load_nn_pred(dt_str, model):
     nn_cubelist = []
-    nn_f = '/data/cr1/cbarth/phd/SVG/plots_nn_T{}_{}.nc'.format(dt_str, model[:-4]) #model_output/model131219/nn_T{}.nc'.format(dt_str)
+    nn_f = '/data/cr1/cbarth/phd/SVG/plots_nn_T{}_{}.nc'.format(dt_str, model[:-4])
     print(nn_f)
     # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
     cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
