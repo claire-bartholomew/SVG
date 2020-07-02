@@ -209,14 +209,14 @@ def prep_data(files, filedir):
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
 
         data[np.where(data < 0)] = 0.
-        data[np.where(data > 32)] = 32.
+        #data[np.where(data > 32)] = 32.
         #maxi = np.amax(data)
         #print('max value in data = ', maxi)
 
         # Normalise data
-        data = data / 32.
-        #maxi = 361.06317874152296
-        #data = data / maxi
+        #data = data / 32.
+        maxi = 361.06317874152296
+        data = data / maxi
 
         # Standardise data (stats calculated from rainy days list)
         #mean = 0.217
