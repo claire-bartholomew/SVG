@@ -18,8 +18,7 @@ def main():
     model_path = '/scratch/cbarth/phd/'
     model = 'model600691.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
     #domain = [288, 416, 100, 228] #scotland
-    #domain = [160, 288, 130, 258] # england
-    domain = [160, 288, 100, 228]
+    domain = [160, 288, 130, 258] # england (training data domain)
     #--------------------------------------------------------------
 
     if prior == 'fp':
