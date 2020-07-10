@@ -50,7 +50,7 @@ opt = parser.parse_args()
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model4.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -200,10 +200,10 @@ def prep_data(files, filedir):
 
         # Set limit of large values - have asked Tim Darlington about these large values
         data[np.where(data < 0)] = 0.
-        data[np.where(data > 32)] = 32.
+        data[np.where(data > 64)] = 64.
 
         # Normalise data
-        data = data / 32.
+        data = data / 64.
 
         if len(data) < 10:
             print(fn)
@@ -491,7 +491,7 @@ for epoch in range(opt.niter):
         'frame_predictor': frame_predictor,
         'posterior': posterior,
         'opt': opt},
-        '%s/model1.pth' % opt.log_dir)
+        '%s/model0.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
