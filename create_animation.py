@@ -13,10 +13,13 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201909291300' #201908141630' 
+    dt_str = '201908141630' #201909291300' #201908141630' 
     prior = 'fp'
     model_path = '/scratch/cbarth/phd/'
     model = 'model600691.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    #domain = [288, 416, 100, 228] #scotland
+    #domain = [160, 288, 130, 258] # england
+    domain = [160, 288, 100, 228]
     #--------------------------------------------------------------
 
     if prior == 'fp':
@@ -30,14 +33,14 @@ def main():
 
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
-    run_svg.main(dt, model_path, model)
+    run_svg.main(dt, model_path, model, domain)
 
     # Neural network output
     nn_cubelist = load_nn_pred(dt_str, model)
     # Radar sequence
-    r_cubelist = load_radar(dt, dt_str, sample_points)
+    r_cubelist = load_radar(dt, dt_str, sample_points, domain)
     # Operational nowcast output
-    n_cubelist = load_nowcast(dt_str, sample_points)
+    n_cubelist = load_nowcast(dt_str, sample_points, domain)
 
     animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior)
     #pdb.set_trace()
@@ -103,7 +106,7 @@ def load_nn_pred(dt_str, model):
 
     return nn_cubelist
 
-def load_nowcast(dt_str, sample_points):
+def load_nowcast(dt_str, sample_points, domain):
     # Load nowcast data
     nwcst_f = '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/{}_u1096_ng_pp_precip_2km'.format(dt_str)
     cubelist = n2c.nimrod_to_cubes(nwcst_f)
@@ -116,13 +119,13 @@ def load_nowcast(dt_str, sample_points):
                 nowcast = cubelist[i]
 
     nc_cube = nowcast.interpolate(sample_points, iris.analysis.Linear())
-    nowcast_cube = nc_cube[:, 160:288, 130:258]/32
+    nowcast_cube = nc_cube[:, domain[0]:domain[1], domain[2]:domain[3]]/32 
     for cu in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7]: #range(8): #[1, 3]: #, 5]: #i.e. t+30, t+60, t+90
         n_cubelist.append(nowcast_cube[cu])
 
     return n_cubelist #nowcast_cube #n_cubelist
 
-def load_radar(dt, dt_str, sample_points):
+def load_radar(dt, dt_str, sample_points, domain):
     # Load radar data
     r_cubelist = []
     for t in [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100, 105, 110, 115, 120]: #[15, 30, 45, 60, 75, 90, 105, 120]
@@ -130,7 +133,7 @@ def load_radar(dt, dt_str, sample_points):
         radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(ti)
         radar = iris.load(radar_f)
         r_cube = radar[0].interpolate(sample_points, iris.analysis.Linear())
-        radar_cube = r_cube[160:288, 130:258]/32
+        radar_cube = r_cube[domain[0]:domain[1], domain[2]:domain[3]]/32
         r_cubelist.append(radar_cube)
 
     return r_cubelist

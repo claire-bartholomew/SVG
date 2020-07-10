@@ -23,13 +23,13 @@ import matplotlib.animation as manimation
 import iris.plot as iplt
 import iris.quickplot as qplt
 import matplotlib
-matplotlib.use('tkAgg') #Agg') #'TkAgg')
+matplotlib.use('tkAgg')
 import matplotlib.pyplot as plt
 
 batch_size = 3 #, type=int, help='batch size')
 data_root = 'data' #', help='root directory for data')
 #model_path = 'logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/model4.pth'
-model_path = '/scratch/cbarth/phd/model131219.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_529994_fp.pth' #131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
+#model_path = '/scratch/cbarth/phd/model131219.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_529994_fp.pth' #131219.pth' #070520.pth' #060320.pth' #160120.pth' #131219.pth' #'/scratch/cbarth/phd/model181219.pth' #model131219.pth' #model4.pth'
 log_dir = 'logs' #, help='directory to save generations to')
 seed = 1 #', default=1, type=int, help='manual seed')
 n_past = 3 #', type=int, default=3, help='number of frames to condition on')
@@ -48,7 +48,7 @@ torch.manual_seed(seed)
 dtype = torch.FloatTensor
 
 #===============================================================================
-def main(startdate, model_path, model):
+def main(startdate, model_path, model, domain):
 
     print('Model = ', model_path, model)
     enddate = startdate + timedelta(minutes=15)
@@ -72,12 +72,12 @@ def main(startdate, model_path, model):
                 if os.path.isfile(file):
                     list_tst.append(file)
 
-            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval)
+            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, domain)
             if skip == False:
                 testing_batch_generator = get_testing_batch(test_loader)
 
                 # Create cubes of right sizes (and scale for cbar by multiplying by 32)
-                pred_cube = cube[:, 160:288, 130:258]
+                pred_cube = cube[:, domain[0]:domain[1], domain[2]:domain[3]]
                 pred_cube *= 32.
 
                 i = 0
@@ -98,15 +98,9 @@ def main(startdate, model_path, model):
                 mean_ssim = np.mean(ssim[batch_number], 1)
                 ordered = np.argsort(mean_ssim)
                 sidx = ordered[-1]
-                #rand_sidx = [np.random.randint(nsample) for s in range(3)]
                 for t in range(n_eval):
-                    #print('time = ', t)
                     pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() *32.
                     pred_cube.units = 'mm/hr'
-                    #print('{} : T+{:02d} min'.format(start_date[i], t*5))
-                    #if t == 0:
-                    #    qplt.contourf(pred_cube[0])
-                    #    plt.show()
                 iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
 
             dtime = dtime + timedelta(minutes=15)
@@ -117,7 +111,7 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def prep_data(files, n_eval):
+def prep_data(files, n_eval, domain):
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -158,7 +152,7 @@ def prep_data(files, n_eval):
         start_date = []
     else:
         skip = False
-        data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
+        data = data[:, domain[0]:domain[1], domain[2]:domain[3]] #focusing on a 128x128 grid box area over England
         # Set limit of large values - have asked Tim Darlington about these large values
         data[np.where(data < 0)] = 0.
         data[np.where(data > 32)] = 32.
@@ -281,5 +275,5 @@ if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
     model_path = '/scratch/cbarth/phd/'
     model = 'model131219.pth'
-    #enddate = datetime.strptime('201909291600', '%Y%m%d%H%M')
-    main(startdate, model_path, model) #, enddate)
+    domain = [160, 288, 130, 258]
+    main(startdate, model_path, model, domain)
