@@ -276,7 +276,7 @@ def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last
 if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
     model_path = '/scratch/cbarth/phd/'
-    model = 'model131219.pth'
+    model = 'model624800.pth' #131219.pth'
     domain = [160, 288, 130, 258]
-    threshold = 32.
+    threshold = 64.
     main(startdate, model_path, model, domain, threshold)
