@@ -95,7 +95,7 @@ def main(startdate, model_path, model, domain, threshold):
                 ordered = np.argsort(mean_ssim)
                 sidx = ordered[-1]
                 for t in range(n_eval):
-                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() *32.
+                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
                     pred_cube.units = 'mm/hr'
                 print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
                 iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))

@@ -102,7 +102,7 @@ def main(startdate, model_path, model, domain, threshold):
                 ordered = np.argsort(mean_ssim)
                 sidx = ordered[-1]
                 for t in range(n_eval):
-                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() *32.
+                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
                     pred_cube.units = 'mm/hr'
                 iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
 
@@ -277,7 +277,7 @@ def make_gifs(x, name, frame_predictor, posterior, encoder, decoder, last_frame_
 if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
     model_path = '/scratch/cbarth/phd/'
-    model = 'model131219.pth'
+    model = 'model600691.pth' #131219.pth'
     domain = [160, 288, 130, 258]
     threshold = 32.
     main(startdate, model_path, model, domain, threshold)
