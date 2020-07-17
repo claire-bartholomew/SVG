@@ -44,7 +44,7 @@ torch.manual_seed(seed)
 dtype = torch.FloatTensor
 
 #===============================================================================
-def main(startdate, model_path, model, domain):
+def main(startdate, model_path, model, domain, threshold):
 
     print('Model = ', model_path, model)
     enddate = startdate + timedelta(minutes=15)
@@ -68,7 +68,7 @@ def main(startdate, model_path, model, domain):
                 if os.path.isfile(file):
                     list_tst.append(file)
 
-            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, domain)
+            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, domain, threshold)
             if skip == False:
                 testing_batch_generator = get_testing_batch(test_loader)
 
@@ -136,7 +136,7 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def prep_data(files, n_eval, domain):
+def prep_data(files, n_eval, domain, threshold):
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -179,9 +179,9 @@ def prep_data(files, n_eval, domain):
         data = data[:, domain[0]:domain[1], domain[2]:domain[3]]
         # Set limit of large values - have asked Tim Darlington about these large values
         data[np.where(data < 0)] = 0.
-        data[np.where(data > 32)] = 32.
+        data[np.where(data > threshold)] = threshold
         # Normalise data
-        data = data / 32.
+        data = data / threshold 
         start_date = cube.coord('forecast_reference_time')[0]
         dataset.append(data)
         dataset.append(data)
@@ -277,4 +277,5 @@ if __name__ == "__main__":
     model_path = '/scratch/cbarth/phd/'
     model = 'model131219.pth'
     domain = [160, 288, 130, 258]
-    main(startdate, model_path, model, domain)
+    threshold = 32.
+    main(startdate, model_path, model, domain, threshold)
