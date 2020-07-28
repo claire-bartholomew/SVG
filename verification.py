@@ -16,11 +16,12 @@ def main():
     # Load all dates in op_nowcast data
     files = [f'/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/2019{mo:02}{dd:02}{h:02}{mi:02}_u1096_ng_pp_precip_2km' for mi in range(0, 60, 15)\
              for h in range(24) for dd in range(1, 32) for mo in range(8, 11)]
-
+    # Select model number for running verification
+    model_n = '625308' #624800' #'131219'
     # Choose variables
     thrshld = 1  # rain rate threshold (mm/hr)
     neighbourhood = 9 #25   # neighbourhood size (e.g. 9 = 3x3)
-    timesteps = [60] #30, 60]
+    timesteps = [30] #30, 60]
     #---------------------------------------------------------------------#
 
     files_exist = []
@@ -44,7 +45,7 @@ def main():
 
             # Load data and calculate FBS scores:
             # Neural network output
-            nn_cubelist, skip0 = load_nn_pred(dt_str, timesteps)
+            nn_cubelist, skip0 = load_nn_pred(dt_str, timesteps, model_n)
             # Operational nowcast output
             n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps)
 
@@ -71,7 +72,7 @@ def main():
                 all_radar.append(r_cubelist[i].data)
                 all_nn.append(nn_cubelist[i].data)
                 all_on.append(n_cubelist[i].data)
-       
+
         # Calculate FSS (following method in Roberts (2008))
         fss_nn = 1 - fbs_nn_sum /fbs_nn_worst_sum
         print('FSS for NN at t+{} = {}'.format(flt, fss_nn))
@@ -80,7 +81,7 @@ def main():
 
     print('number of files: {}'.format(count_files))
 
-    generate_pdf(all_radar, all_nn, all_on)
+    #generate_pdf(all_radar, all_nn, all_on)
 
     #pdb.set_trace()
 
@@ -100,26 +101,25 @@ def generate_pdf(all_radar, all_nn, all_on):
     #plt.hist(radar_values, bins, log=True) #density=True, log=True)
     counts, _, patches = plt.hist(radar_values, bins, log=True) #density=True, log=True)
     for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
-    plt.ylim((1000, 250000000))
+    plt.ylim((0, 250000000))
     plt.xlabel('Rain rate (mm/hr)')
     plt.title('Observed values')
     plt.subplot(1,3,2)
     #plt.hist(nn_values, bins, log=True) #density=True, log=True)
     counts, _, patches = plt.hist(nn_values, bins, log=True) #density=True, log=True)
     for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
-    plt.ylim((1000, 250000000))
+    plt.ylim((0, 250000000))
     plt.xlabel('Rain rate (mm/hr)')
     plt.title('ML Predicted values')
     plt.subplot(1,3,3)
     counts, _, patches = plt.hist(on_values, bins, log=True) #density=True, log=True)
     for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
-    plt.ylim((1000, 250000000))
+    plt.ylim((0, 250000000))
     plt.xlabel('Rain rate (mm/hr)')
     plt.title('ON Predicted values')
     plt.show()
 
-    pdb.set_trace()
-
+    #pdb.set_trace()
 
 def calculate_fbs(ob_fraction, nc_fraction):
     '''
@@ -166,9 +166,9 @@ def generate_fractions(cube, n_size, threshold):
 
     return fractions
 
-def load_nn_pred(dt_str, timesteps):
+def load_nn_pred(dt_str, timesteps, model_n):
     nn_cubelist = []
-    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model131219/nn_T{}.nc'.format(dt_str)
+    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}/plots_nn_T{}_model{}.nc'.format(model_n, dt_str, model_n)
     print(nn_f)
     if os.path.exists(nn_f):
         skip = False

@@ -25,6 +25,7 @@ import iris.quickplot as qplt
 import matplotlib
 matplotlib.use('tkAgg')
 import matplotlib.pyplot as plt
+import gc
 
 batch_size = 3 #, type=int, help='batch size')
 data_root = 'data' #', help='root directory for data')
@@ -47,7 +48,8 @@ dtype = torch.FloatTensor
 def main(startdate, model_path, model, domain, threshold):
 
     print('Model = ', model_path, model)
-    enddate = startdate + timedelta(minutes=15)
+    startdate = datetime.strptime('201807270000', '%Y%m%d%H%M') # for running inference for verification
+    enddate = datetime.strptime('201901010000', '%Y%m%d%H%M') # for running inference for verification
     dtime = startdate
 
     frame_predictor, posterior, prior, encoder, decoder, last_frame_skip = load_model(model_path, model)
@@ -61,45 +63,64 @@ def main(startdate, model_path, model, domain, threshold):
             files_v = []
             for dt in date_list:
                 dt_str = datetime.strftime(dt, '%Y%m%d%H%M')
-                files_v.append('/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
+                #files_v.append('/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
+                files_v.append('/data/cr1/cbarth/phd/SVG/training_data/100days/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
+
+            #rainy_dates = [#'0102', '0103', '0104', '0114', '0115', '0116', '0117', '0121',
+            #   '0122', '0123', '0124', '0128', '0130', '0131', '0208', '0209',
+            #   '0210', '0212', '0214', '0218', '0304', '0305', '0309', '0310',
+            #   '0311', '0314', '0315', '0322', '0326', '0327', '0329', '0330',
+            #   '0401', '0402', '0403', '0404', '0409', '0424', '0427', '0501',
+            #   '0512', '0602', '0613', '0619', '0727', '0728', '0729', '0809',
+            #   '0810', '0811', '0812', '0815', '0818', '0824', '0826', '0910',
+            #   '0911', '0915', '0917', '0918', '0919', '0920', '0922', '1007',
+            #   '1008', '1011', '1012', '1013', '1014', '1031', '1102', '1103',
+            #   '1106', '1107', '1108', '1109', '1110', '1112', '1113', '1120',
+            #   #'1127',
+            #   '1128', '1129', '1130', '1201', '1202', '1204', '1205',
+            #   '1206', '1207', '1208', '1215', '1216', '1217', '1218', '1219',
+            #   '1220', '1221']
+            #files_t = [f'/data/cr1/cbarth/phd/SVG/training_data/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+            #          for mi in range(0,60,5) for h in range(24) for mmdd in rainy_dates]
 
             list_tst = []
             for file in files_v:
                 if os.path.isfile(file):
                     list_tst.append(file)
 
-            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, domain, threshold)
-            if skip == False:
-                testing_batch_generator = get_testing_batch(test_loader)
+            if list_tst != []:
+                test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, domain, threshold)
+                if skip == False:
+                    testing_batch_generator = get_testing_batch(test_loader)
 
-                # Create cubes of right sizes (and scale for cbar by multiplying by 32)
-                #pred_cube = cube[:, 288:416, 100:228] #[:, 160:288, 130:258]
-                pred_cube = cube[:, domain[0]:domain[1], domain[2]:domain[3]]
-                pred_cube *= 32.
+                    # Create cubes of right sizes (and scale for cbar by multiplying by 32)
+                    #pred_cube = cube[:, 288:416, 100:228] #[:, 160:288, 130:258]
+                    pred_cube = cube[:, domain[0]:domain[1], domain[2]:domain[3]]
+                    pred_cube *= 32.
 
-                i = 0
-                print('start datetime:', start_date[i])
-                yyyy = str(start_date[i])[10:14]
-                mm = str(start_date[i])[15:17]
-                dd = str(start_date[i])[18:20]
-                hh = str(start_date[i])[21:23]
-                mi = str(start_date[i])[24:26]
-                dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
-                # generate predictions
-                test_x = next(testing_batch_generator)
-                ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test', frame_predictor, posterior, prior, encoder, decoder, last_frame_skip)
+                    i = 0
+                    print('start datetime:', start_date[i])
+                    yyyy = str(start_date[i])[10:14]
+                    mm = str(start_date[i])[15:17]
+                    dd = str(start_date[i])[18:20]
+                    hh = str(start_date[i])[21:23]
+                    mi = str(start_date[i])[24:26]
+                    dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
+                    # generate predictions
+                    test_x = next(testing_batch_generator)
+                    ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test', frame_predictor, posterior, prior, encoder, decoder, last_frame_skip)
 
-                batch_number = 0 
-                # Find index of sample with highest SSIM score
-                mean_ssim = np.mean(ssim[batch_number], 1)
-                ordered = np.argsort(mean_ssim)
-                sidx = ordered[-1]
-                for t in range(n_eval):
-                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
-                    pred_cube.units = 'mm/hr'
-                print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
-                iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
-
+                    batch_number = 0
+                    # Find index of sample with highest SSIM score
+                    mean_ssim = np.mean(ssim[batch_number], 1)
+                    ordered = np.argsort(mean_ssim)
+                    sidx = ordered[-1]
+                    for t in range(n_eval):
+                        pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
+                        pred_cube.units = 'mm/hr'
+                        print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
+                    iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/model_output/{}_train/plots_nn_T{}_{}.nc".format(model[:-4], dt_str, model[:-4]))
+            gc.collect()
             dtime = dtime + timedelta(minutes=15)
 
 def load_model(model_path, model):
@@ -143,7 +164,8 @@ def prep_data(files, n_eval, domain, threshold):
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     timeformat = "%Y%m%d%H%M"
-    regex = re.compile("^/data/cr1/cbarth/phd/SVG/verification_data/radar/(\d*)")
+    #regex = re.compile("^/data/cr1/cbarth/phd/SVG/verification_data/radar/(\d*)")
+    regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/100days/(\d*)")
 
     def gettimestamp(thestring):
         m = regex.search(thestring)
@@ -181,7 +203,7 @@ def prep_data(files, n_eval, domain, threshold):
         data[np.where(data < 0)] = 0.
         data[np.where(data > threshold)] = threshold
         # Normalise data
-        data = data / threshold 
+        data = data / threshold
         start_date = cube.coord('forecast_reference_time')[0]
         dataset.append(data)
         dataset.append(data)
@@ -275,7 +297,7 @@ def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last
 if __name__ == "__main__":
     startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
     model_path = '/scratch/cbarth/phd/'
-    model = 'model131219.pth'
+    model = 'model624800.pth' #131219.pth'
     domain = [160, 288, 130, 258]
-    threshold = 32.
+    threshold = 64.
     main(startdate, model_path, model, domain, threshold)
