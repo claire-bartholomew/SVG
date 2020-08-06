@@ -108,7 +108,8 @@ def main():
 
     #generate_pdf(all_radar, all_nn, all_on)
 
-    #generate_err_map(all_radar, all_nn, all_on, r_cubelist[0])
+    print('T+{}'.format(flt))
+    generate_err_map(all_radar, all_nn, all_on, r_cubelist[0])
 
     pdb.set_trace()
 
@@ -123,29 +124,34 @@ def generate_err_map(all_radar, all_nn, all_on, cube):
             on_err += all_radar[i] - all_on[i]
             nn_err += all_radar[i] - all_nn[i]
 
-    #pdb.set_trace()
     on_cube = cube.copy()
     nn_cube = cube.copy()
     on_cube.data = on_err
     nn_cube.data = nn_err
 
-    pdb.set_trace()
-    import pickle
-    pickle.dump(on_err, open('on_err.pkl', 'wb'))
-    pickle.dump(nn_err, open('nn_err.pkl', 'wb'))
-
-    pdb.set_trace()
+    #import pickle
+    #pickle.dump(on_err, open('on_err.pkl', 'wb'))
+    #pickle.dump(nn_err, open('nn_err.pkl', 'wb'))
+    #pdb.set_trace()
+    #on_cube = pickle.load(open('on_err.pkl', 'rb'))
+    #nn_cube = pickle.load(open('nn_err.pkl', 'rb'))
 
     plt.subplot(121)
-    qplt.contourf(on_cube, cmap='bwr')
-    plt.gca().coastlines()
-    plt.title('Obs - Op nowcast error')
-    plt.subplot(122)
-    qplt.contourf(nn_cube, cmap='bwr')
-    plt.gca().coastlines()
-    plt.title('Obs - ML model error')
-    plt.show()
+    #qplt.contourf(on_cube, cmap='bwr')
+    mesh = iplt.pcolormesh(on_cube, cmap='bwr', vmin=-3000, vmax=3000)
+    bar = plt.colorbar(mesh, orientation='horizontal', extend='both')
+    bar.set_label('Cumulative error (mm/hr)')
+    plt.gca().coastlines(resolution='50m')
+    plt.title('Target - Op nowcast error')
 
+    plt.subplot(122)
+    #qplt.contourf(nn_cube, cmap='bwr')
+    mesh = iplt.pcolormesh(nn_cube, cmap='bwr', vmin=-3000, vmax=3000)
+    bar = plt.colorbar(mesh, orientation='horizontal', extend='both')
+    bar.set_label('Cumulative error (mm/hr)')
+    plt.gca().coastlines(resolution='50m')
+    plt.title('Target - SVG nowcast error')
+    plt.show()
 
 def generate_pdf(all_radar, all_nn, all_on):
     '''
