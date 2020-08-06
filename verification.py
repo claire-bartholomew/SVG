@@ -5,6 +5,7 @@ import numpy as np
 import pdb
 import os
 import matplotlib.pyplot as plt
+import iris.quickplot as qplt
 
 def main():
 
@@ -17,11 +18,12 @@ def main():
     files = [f'/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/2019{mo:02}{dd:02}{h:02}{mi:02}_u1096_ng_pp_precip_2km' for mi in range(0, 60, 15)\
              for h in range(24) for dd in range(1, 32) for mo in range(8, 11)]
     # Select model number for running verification
-    model_n = '625308' #624800' #'131219'
+    model_n = '624800' #665443' #' #625308' #624800' #'131219'
     # Choose variables
     thrshld = 1  # rain rate threshold (mm/hr)
     neighbourhood = 9 #25   # neighbourhood size (e.g. 9 = 3x3)
-    timesteps = [30] #30, 60]
+    timesteps = [60] #30, 60]
+    data_split = 'test' #train'
     #---------------------------------------------------------------------#
 
     files_exist = []
@@ -34,56 +36,116 @@ def main():
         fbs_nn_worst_sum = 0
         fbs_on_sum = 0
         fbs_on_worst_sum = 0
+        fbs_p_sum = 0
+        fbs_p_worst_sum = 0
         count_files = 0
         all_radar = []
         all_nn = []
         all_on = []
+        all_p = []
         for file in files_exist:
-            #print(file)
             dt = datetime.strptime(file, '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/%Y%m%d%H%M_u1096_ng_pp_precip_2km')
             dt_str = dt.strftime('%Y%m%d%H%M')
+            if dt > datetime.strptime('20190802', '%Y%m%d'): #to avoid first hour so persistence forecast works
+                #print(file)
+                # Load data and calculate FBS scores:
+                # Neural network output
+                nn_cubelist, skip0 = load_nn_pred(dt_str, timesteps, model_n)
+                # Operational nowcast output
+                n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps)
 
-            # Load data and calculate FBS scores:
-            # Neural network output
-            nn_cubelist, skip0 = load_nn_pred(dt_str, timesteps, model_n)
-            # Operational nowcast output
-            n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps)
+                if ((skip0 == False) & (skip == False)):
+                    count_files += 1
+                    r_cubelist = load_radar(dt, dt_str, sample_points,
+                                            timesteps, data_split)
 
-            if ((skip0 == False) & (skip == False)):
-                count_files += 1
-                r_cubelist = load_radar(dt, dt_str, sample_points, timesteps)
-                # Generate fractions over grid
-                ob_fraction = generate_fractions(r_cubelist[i],
+                    # Persistence forecast
+                    p_cubelist = []
+                    persist_dt = dt - timedelta(minutes=flt)
+                    persist_dt_str = persist_dt.strftime('%Y%m%d%H%M')
+                    persist_radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(persist_dt_str)
+                    p_radar = iris.load(persist_radar_f)
+                    p_cube = p_radar[0].interpolate(sample_points, iris.analysis.Linear())
+                    persist_cube = p_cube[160:288, 130:258] / 32
+                    p_cubelist.append(persist_cube)
+
+                    # Generate fractions over grid
+                    ob_fraction = generate_fractions(r_cubelist[i],
                                         n_size=neighbourhood, threshold=thrshld)
-                nn_nc_fraction = generate_fractions(nn_cubelist[i],
+                    nn_nc_fraction = generate_fractions(nn_cubelist[i],
                                         n_size=neighbourhood, threshold=thrshld)
-                on_nc_fraction = generate_fractions(n_cubelist[i],
+                    on_nc_fraction = generate_fractions(n_cubelist[i],
+                                        n_size=neighbourhood, threshold=thrshld)
+                    p_fraction = generate_fractions(p_cubelist[i],
                                         n_size=neighbourhood, threshold=thrshld)
 
-                # Calculate FBS and FBSworst
-                fbs, fbs_worst = calculate_fbs(ob_fraction, nn_nc_fraction)
-                fbs_nn_sum += fbs
-                fbs_nn_worst_sum += fbs_worst
-                fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_nc_fraction)
-                fbs_on_sum += fbs_on
-                fbs_on_worst_sum += fbs_worst_on
+                    # Calculate FBS and FBSworst
+                    fbs, fbs_worst = calculate_fbs(ob_fraction, nn_nc_fraction)
+                    fbs_nn_sum += fbs
+                    fbs_nn_worst_sum += fbs_worst
+                    fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_nc_fraction)
+                    fbs_on_sum += fbs_on
+                    fbs_on_worst_sum += fbs_worst_on
+                    fbs_p, fbs_worst_p = calculate_fbs(ob_fraction, p_fraction)
+                    fbs_p_sum += fbs_p
+                    fbs_p_worst_sum += fbs_worst_p
 
-                # Calculate all data values for generating PDFs
-                all_radar.append(r_cubelist[i].data)
-                all_nn.append(nn_cubelist[i].data)
-                all_on.append(n_cubelist[i].data)
+                    # Calculate all data values for generating PDFs
+                    all_radar.append(r_cubelist[i].data)
+                    all_nn.append(nn_cubelist[i].data)
+                    all_on.append(n_cubelist[i].data)
+                    all_p.append(p_cubelist[i].data)
 
         # Calculate FSS (following method in Roberts (2008))
         fss_nn = 1 - fbs_nn_sum /fbs_nn_worst_sum
         print('FSS for NN at t+{} = {}'.format(flt, fss_nn))
         fss_on = 1 - fbs_on_sum /fbs_on_worst_sum
         print('FSS for Op Ncst at t+{} = {}'.format(flt, fss_on))
+        fss_p = 1 - fbs_p_sum /fbs_p_worst_sum
+        print('FSS for persistence at t+{} = {}'.format(flt, fss_p))
 
     print('number of files: {}'.format(count_files))
 
     #generate_pdf(all_radar, all_nn, all_on)
 
+    #generate_err_map(all_radar, all_nn, all_on, r_cubelist[0])
+
+    pdb.set_trace()
+
+def generate_err_map(all_radar, all_nn, all_on, cube):
+    print('length = ', len(all_radar))
+
+    for i in range(len(all_radar)):
+        if i == 0:
+            on_err = all_radar[i] - all_on[i]
+            nn_err = all_radar[i] - all_nn[i]
+        else:
+            on_err += all_radar[i] - all_on[i]
+            nn_err += all_radar[i] - all_nn[i]
+
     #pdb.set_trace()
+    on_cube = cube.copy()
+    nn_cube = cube.copy()
+    on_cube.data = on_err
+    nn_cube.data = nn_err
+
+    pdb.set_trace()
+    import pickle
+    pickle.dump(on_err, open('on_err.pkl', 'wb'))
+    pickle.dump(nn_err, open('nn_err.pkl', 'wb'))
+
+    pdb.set_trace()
+
+    plt.subplot(121)
+    qplt.contourf(on_cube, cmap='bwr')
+    plt.gca().coastlines()
+    plt.title('Obs - Op nowcast error')
+    plt.subplot(122)
+    qplt.contourf(nn_cube, cmap='bwr')
+    plt.gca().coastlines()
+    plt.title('Obs - ML model error')
+    plt.show()
+
 
 def generate_pdf(all_radar, all_nn, all_on):
     '''
@@ -208,12 +270,15 @@ def load_nowcast(dt_str, sample_points, timesteps):
 
     return n_cubelist, skip
 
-def load_radar(dt, dt_str, sample_points, timesteps):
+def load_radar(dt, dt_str, sample_points, timesteps, data_split):
     # Load radar data
     r_cubelist = []
     for t in timesteps:
         ti = (dt + timedelta(minutes = t)).strftime('%Y%m%d%H%M')
-        radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str)
+        if data_split == 'test':
+            radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str)
+        if data_split == 'train':
+            radar_f = '/data/cr1/cbarth/phd/SVG/training_data/100days/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str)
         radar = iris.load(radar_f)
         r_cube = radar[0].interpolate(sample_points, iris.analysis.Linear())
         radar_cube = r_cube[160:288, 130:258] / 32
