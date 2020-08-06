@@ -35,6 +35,7 @@ parser.add_argument('--n_past', type=int, default=3, help='number of frames to c
 parser.add_argument('--n_future', type=int, default=7, help='number of frames to predict during training')
 parser.add_argument('--n_eval', type=int, default=7, help='number of frames to predict during eval')
 parser.add_argument('--rnn_size', type=int, default=256, help='dimensionality of hidden layer')
+parser.add_argument('--prior_rnn_layers', type=int, default=1, help='number of layers')
 parser.add_argument('--posterior_rnn_layers', type=int, default=1, help='number of layers')
 parser.add_argument('--predictor_rnn_layers', type=int, default=2, help='number of layers')
 parser.add_argument('--z_dim', type=int, default=10, help='dimensionality of z_t')
@@ -47,10 +48,11 @@ parser.add_argument('--last_frame_skip', default=True, help='if true, skip conne
 
 
 opt = parser.parse_args()
+print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model4.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -58,7 +60,7 @@ if opt.model_dir != '':
     opt.model_dir = model_dir
     opt.log_dir = '%s/continued' % opt.log_dir
 else:
-    name = 'model=%s%dx%d-rnn_size=%d-predictor-posterior-rnn_layers=%d-%d-n_past=%d-n_future=%d-lr=%.4f-g_dim=%d-z_dim=%d-last_frame_skip=%s-beta=%.7f%s' % (opt.model, opt.image_width, opt.image_width, opt.rnn_size, opt.predictor_rnn_layers, opt.posterior_rnn_layers, opt.n_past, opt.n_future, opt.lr, opt.g_dim, opt.z_dim, opt.last_frame_skip, opt.beta, opt.name)
+    name = 'model=%s%dx%d-rnn_size=%d-predictor-posterior-prior-rnn_layers=%d-%d-%d-n_past=%d-n_future=%d-lr=%.4f-g_dim=%d-z_dim=%d-last_frame_skip=%s-beta=%.7f%s' % (opt.model, opt.image_width, opt.image_width, opt.rnn_size, opt.predictor_rnn_layers, opt.posterior_rnn_layers, opt.prior_rnn_layers, opt.n_past, opt.n_future, opt.lr, opt.g_dim, opt.z_dim, opt.last_frame_skip, opt.beta, opt.name)
     if opt.dataset == 'smmnist':
         opt.log_dir = '%s/%s-%d/%s' % (opt.log_dir, opt.dataset, opt.num_digits, name)
     else:
@@ -68,11 +70,11 @@ os.makedirs('%s/gen/' % opt.log_dir, exist_ok=True)
 os.makedirs('%s/plots/' % opt.log_dir, exist_ok=True)
 
 print("Random Seed: ", opt.seed)
-random.seed(opt.seed)
+#random.seed(opt.seed)
+np.random.seed(opt.seed) #random seed testing - put this line in place of one above
 torch.manual_seed(opt.seed)
 torch.cuda.manual_seed_all(opt.seed)
 dtype = torch.cuda.FloatTensor
-
 
 # ---------------- load the models  ----------------
 
@@ -93,11 +95,14 @@ import models.lstm as lstm_models
 if opt.model_dir != '':
     frame_predictor = saved_model['frame_predictor']
     posterior = saved_model['posterior']
+    prior = saved_model['prior']
 else:
     frame_predictor = lstm_models.lstm(opt.g_dim+opt.z_dim, opt.g_dim, opt.rnn_size, opt.predictor_rnn_layers, opt.batch_size)
     posterior = lstm_models.gaussian_lstm(opt.g_dim, opt.z_dim, opt.rnn_size, opt.posterior_rnn_layers, opt.batch_size)
+    prior = lstm_models.gaussian_lstm(opt.g_dim, opt.z_dim, opt.rnn_size, opt.prior_rnn_layers, opt.batch_size)
     frame_predictor.apply(utils.init_weights)
     posterior.apply(utils.init_weights)
+    prior.apply(utils.init_weights)
 
 if opt.model == 'dcgan':
     if opt.image_width == 64:
@@ -123,27 +128,41 @@ else:
 
 frame_predictor_optimizer = opt.optimizer(frame_predictor.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 posterior_optimizer = opt.optimizer(posterior.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
+prior_optimizer = opt.optimizer(prior.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 encoder_optimizer = opt.optimizer(encoder.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 decoder_optimizer = opt.optimizer(decoder.parameters(), lr=opt.lr, betas=(opt.beta1, 0.999))
 
 print('------------models set up-----------')
 
 # --------- loss functions ------------------------------------
-mse_criterion = nn.MSELoss()
-def kl_criterion(mu, logvar):
-  # 0.5 * sum(1 + log(sigma^2) - mu^2 - sigma^2)
-  KLD = -0.5 * torch.sum(1 + logvar - mu.pow(2) - logvar.exp())
-  KLD /= opt.batch_size  
-  return KLD
+#mse_criterion = nn.MSELoss()
+
+def exp_criterion(prediction, target):
+    '''
+    Error to give more weighting to higher rain rates
+    '''
+    error = torch.abs(prediction - target)**2 * np.exp(target) 
+    loss = torch.mean(error) 
+    return loss 
+
+def kl_criterion(mu1, logvar1, mu2, logvar2):
+    # KL( N(mu_1, sigma2_1) || N(mu_2, sigma2_2)) = 
+    #   log( sqrt(
+    # 
+    sigma1 = logvar1.mul(0.5).exp() 
+    sigma2 = logvar2.mul(0.5).exp() 
+    kld = torch.log(sigma2/sigma1) + (torch.exp(logvar1) + (mu1 - mu2)**2)/(2*torch.exp(logvar2)) - 1/2
+    return kld.sum() / opt.batch_size
 
 print('-----------loss functions defined-----------')
 
 # --------- transfer to gpu ------------------------------------
 frame_predictor.cuda()
 posterior.cuda()
+prior.cuda()
 encoder.cuda()
 decoder.cuda()
-mse_criterion.cuda()
+#mse_criterion.cuda()
 
 # --------- load a dataset ------------------------------------
 
@@ -198,12 +217,22 @@ def prep_data(files, filedir):
         #pdb.set_trace()
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
 
-        # Set limit of large values - have asked Tim Darlington about these large values
         data[np.where(data < 0)] = 0.
+        #data[np.where(data > 32)] = 32.
         data[np.where(data > 64)] = 64.
+        #maxi = np.amax(data)
+        #print('max value in data = ', maxi)
 
         # Normalise data
+        #data = data / 32.
         data = data / 64.
+        #maxi = 361.06317874152296
+        #data = data / maxi
+
+        # Standardise data (stats calculated from rainy days list)
+        #mean = 0.217
+        #std = 0.875
+        #data = (data - mean) / std
 
         if len(data) < 10:
             print(fn)
@@ -213,6 +242,8 @@ def prep_data(files, filedir):
             dataset.append(data)
 
     print('count', count)
+    #print('data max', np.amax(dataset))
+    #dataset = dataset / np.amax(dataset)
 
     print('size of data:', len(dataset), np.shape(dataset))
 
@@ -285,51 +316,33 @@ def plot(x, epoch):
     nsample = 20 
     gen_seq = [[] for i in range(nsample)]
     gt_seq = [x[i] for i in range(len(x))]
-    
-    h_seq = [encoder(x[i]) for i in range(opt.n_past)]
+
     for s in range(nsample):
         frame_predictor.hidden = frame_predictor.init_hidden()
-        #posterior.hidden = posterior.init_hidden()
-        #prior.hidden = prior.init_hidden()
+        posterior.hidden = posterior.init_hidden()
+        prior.hidden = prior.init_hidden()
         gen_seq[s].append(x[0])
         x_in = x[0]
         for i in range(1, opt.n_eval):
-            #h = encoder(x_in)
+            h = encoder(x_in)
             if opt.last_frame_skip or i < opt.n_past:	
-                h, skip = h_seq[i-1]
-                h = h.detach()
-            elif i < opt.n_past:
-                h, _ = h_seq[i-1]
-                h = h.detach()
+                h, skip = h
+            else:
+                h, _ = h
+            h = h.detach()
             if i < opt.n_past:
-                z_t, _, _ = posterior(h_seq[i][0])
-                frame_predictor(torch.cat([h, z_t], 1)) 
+                h_target = encoder(x[i])
+                h_target = h_target[0].detach()
+                z_t, _, _ = posterior(h_target)
+                prior(h)
+                frame_predictor(torch.cat([h, z_t], 1))
                 x_in = x[i]
                 gen_seq[s].append(x_in)
             else:
-                z_t = torch.cuda.FloatTensor(opt.batch_size, opt.z_dim).normal_()
+                z_t, _, _ = prior(h)
                 h = frame_predictor(torch.cat([h, z_t], 1)).detach()
                 x_in = decoder([h, skip]).detach()
                 gen_seq[s].append(x_in)
-
-            #if opt.last_frame_skip or i < opt.n_past:	
-            #    h, skip = h
-            #else:
-            #    h, _ = h
-            #h = h.detach()
-            #if i < opt.n_past:
-            #    h_target = encoder(x[i])
-            #    h_target = h_target[0].detach()
-            #    z_t, _, _ = posterior(h_target)
-            #    prior(h)
-            #    frame_predictor(torch.cat([h, z_t], 1))
-            #    x_in = x[i]
-            #    gen_seq[s].append(x_in)
-            #else:
-            #    z_t, _, _ = prior(h)
-            #    h = frame_predictor(torch.cat([h, z_t], 1)).detach()
-            #    x_in = decoder([h, skip]).detach()
-            #    gen_seq[s].append(x_in)
 
     to_plot = []
     gifs = [ [] for t in range(opt.n_eval) ]
@@ -338,10 +351,27 @@ def plot(x, epoch):
         # ground truth sequence
         row = [] 
         for t in range(opt.n_eval):
+            print(t)
             row.append(gt_seq[t][i])
         to_plot.append(row)
 
+        # best sequence
+        min_mse = 1e7
         for s in range(nsample):
+            mse = 0
+            for t in range(opt.n_eval):
+                mse +=  torch.sum( (gt_seq[t][i].data.cpu() - gen_seq[s][t][i].data.cpu())**2 )
+            if mse < min_mse:
+                min_mse = mse
+                min_idx = s
+
+        s_list = [min_idx, 
+                  np.random.randint(nsample), 
+                  np.random.randint(nsample), 
+                  np.random.randint(nsample), 
+                  np.random.randint(nsample)]
+        for ss in range(len(s_list)):
+            s = s_list[ss]
             row = []
             for t in range(opt.n_eval):
                 row.append(gen_seq[s][t][i]) 
@@ -349,9 +379,8 @@ def plot(x, epoch):
         for t in range(opt.n_eval):
             row = []
             row.append(gt_seq[t][i])
-            #for ss in range(len(s_list)):
-            #    s = s_list[ss]
-            for s in range(nsample):
+            for ss in range(len(s_list)):
+                s = s_list[ss]
                 row.append(gen_seq[s][t][i])
             gifs[t].append(row)
 
@@ -368,24 +397,22 @@ def plot_rec(x, epoch):
     gen_seq = []
     gen_seq.append(x[0])
     x_in = x[0]
-    h_seq = [encoder(x[i]) for i in range(opt.n_past+opt.n_future)]
     for i in range(1, opt.n_past+opt.n_future):
-        h_target = h_seq[i][0].detach()
-
+        h = encoder(x[i-1])
+        h_target = encoder(x[i])
         if opt.last_frame_skip or i < opt.n_past:	
-            h, skip = h_seq[i-1]
+            h, skip = h
         else:
-            h, _ = h_seq[i-1]
-
+            h, _ = h
+        h_target, _ = h_target
         h = h.detach()
-        z_t, mu, logvar = posterior(h_target)
-
+        h_target = h_target.detach()
+        z_t, _, _= posterior(h_target)
         if i < opt.n_past:
             frame_predictor(torch.cat([h, z_t], 1)) 
             gen_seq.append(x[i])
         else:
-            #h_pred = frame_predictor(torch.cat([h, z_t], 1))
-            h_pred = frame_predictor(torch.cat([h, z_t], 1)).detach()
+            h_pred = frame_predictor(torch.cat([h, z_t], 1))
             x_pred = decoder([h_pred, skip]).detach()
             gen_seq.append(x_pred)
 
@@ -403,57 +430,62 @@ def plot_rec(x, epoch):
 def train(x):
     frame_predictor.zero_grad()
     posterior.zero_grad()
-    #prior.zero_grad()
+    prior.zero_grad()
     encoder.zero_grad()
     decoder.zero_grad()
 
     # initialize the hidden state.
     frame_predictor.hidden = frame_predictor.init_hidden()
     posterior.hidden = posterior.init_hidden()
-    #prior.hidden = prior.init_hidden()
+    prior.hidden = prior.init_hidden()
 
-    h_seq = [encoder(x[i]) for i in range(opt.n_past+opt.n_future)]
-    mse = 0
+    #mse = 0
+    exp_loss = 0
     kld = 0
     for i in range(1, opt.n_past+opt.n_future):
-        h_target = h_seq[i][0]
-
-
+        #print(i)
+        h = encoder(x[i-1])
+        h_target = encoder(x[i])[0]
         if opt.last_frame_skip or i < opt.n_past:	
-            h, skip = h_seq[i-1]
+            h, skip = h
         else:
-            h = h_seq[i-1][0]
+            h = h[0]
         z_t, mu, logvar = posterior(h_target)
-        #_, mu_p, logvar_p = prior(h)
+        _, mu_p, logvar_p = prior(h)
         h_pred = frame_predictor(torch.cat([h, z_t], 1))
         x_pred = decoder([h_pred, skip])
-        mse += mse_criterion(x_pred, x[i])
-        kld += kl_criterion(mu, logvar) #, mu_p, logvar_p)
+        #mse += mse_criterion(x_pred, x[i])
+        exp_loss += exp_criterion(x_pred, x[i])
+        kld += kl_criterion(mu, logvar, mu_p, logvar_p)
 
-    loss = mse + kld*opt.beta
+    #loss = mse + kld*opt.beta
+    loss = exp_loss + kld*opt.beta
     loss.backward()
 
     frame_predictor_optimizer.step()
     posterior_optimizer.step()
-    #prior_optimizer.step()
+    prior_optimizer.step()
     encoder_optimizer.step()
     decoder_optimizer.step()
 
-    return mse.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
+    #return mse.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
+    return exp_loss.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
 
 # --------- training loop ------------------------------------
 print('Start training loop')
-mse_loss = []
+#mse_loss = []
 kld_loss = []
+exp_loss = []
 for epoch in range(opt.niter):
     print('epoch = {}'.format(epoch))
     frame_predictor.train()
     posterior.train()
-    #prior.train()
+    prior.train()
     encoder.train()
     decoder.train()
-    epoch_mse = 0
+    #epoch_mse = 0
     epoch_kld = 0
+    epoch_exp_loss = 0
     #progress = progressbar.ProgressBar(max_value=opt.epoch_size).start()
     for i in range(opt.epoch_size):
         #print(i)
@@ -461,24 +493,28 @@ for epoch in range(opt.niter):
         x = next(training_batch_generator)
 
         # train frame_predictor 
-        mse, kld = train(x)
-        epoch_mse += mse
+        #mse, kld = train(x)
+        exp_loss, kld = train(x)
+        epoch_exp_loss += exp_loss
+        #epoch_mse += mse
         epoch_kld += kld
 
     #progress.finish()
     #utils.clear_progressbar()
 
-    print('[%02d] mse loss: %.5f | kld loss: %.5f (%d)' % (epoch, epoch_mse/opt.epoch_size, epoch_kld/opt.epoch_size, epoch*opt.epoch_size*opt.batch_size))
+    #print('[%02d] mse loss: %.5f | kld loss: %.5f (%d)' % (epoch, epoch_mse/opt.epoch_size, epoch_kld/opt.epoch_size, epoch*opt.epoch_size*opt.batch_size))
+    print('[%02d] exp loss: %.5f | kld loss: %.5f (%d)' % (epoch, epoch_exp_loss/opt.epoch_size, epoch_kld/opt.epoch_size, epoch*opt.epoch_size*opt.batch_size))
 
-    mse_loss.append(epoch_mse/opt.epoch_size)
+    exp_loss.append(epoch_exp_loss/opt.epoch_size)
+    #mse_loss.append(epoch_mse/opt.epoch_size)
     kld_loss.append(epoch_kld/opt.epoch_size)
 
     # plot some stuff
     frame_predictor.eval()
-    encoder.eval()
-    decoder.eval()
+    #encoder.eval()
+    #decoder.eval()
     posterior.eval()
-    #prior.eval()
+    prior.eval()
 
     #x = next(testing_batch_generator)
     #plot(x, epoch)
@@ -490,11 +526,13 @@ for epoch in range(opt.niter):
         'decoder': decoder,
         'frame_predictor': frame_predictor,
         'posterior': posterior,
+        'prior': prior,
         'opt': opt},
-        '%s/model0.pth' % opt.log_dir)
+        '%s/model9.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
 
-    print('MSE losses: ', mse_loss)
+    #print('MSE losses: ', mse_loss)
+    print('EXP losses: ', exp_loss)
     print('KLD losses: ', kld_loss)

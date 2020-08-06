@@ -210,18 +210,20 @@ def prep_data(files, filedir):
 
         data[np.where(data < 0)] = 0.
         #data[np.where(data > 32)] = 32.
+        data[np.where(data > 64)] = 64.
         #maxi = np.amax(data)
         #print('max value in data = ', maxi)
 
         # Normalise data
         #data = data / 32.
+        data = data / 64.
         #maxi = 361.06317874152296
         #data = data / maxi
 
         # Standardise data (stats calculated from rainy days list)
-        mean = 0.217
-        std = 0.875
-        data = (data - mean) / std
+        #mean = 0.217
+        #std = 0.875
+        #data = (data - mean) / std
 
         if len(data) < 10:
             print(fn)
