@@ -13,12 +13,12 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201909291300' #201908141630' 
-    prior = 'fp'
+    dt_str = '201908141630' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
+    prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model625308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
-    #domain = [288, 416, 100, 228] #scotland
-    domain = [160, 288, 130, 258] # england (training data domain)
+    model = 'model712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    domain = [288, 416, 100, 228] #scotland
+    #domain = [160, 288, 130, 258] # england (training data domain)
     threshold = 64.
     #--------------------------------------------------------------
 
@@ -60,6 +60,9 @@ def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior):
     # Set video filename
     filename = "animations/{}_radar_animation_{}.mp4".format(prior, dt_str)
 
+    # Add axes to the figure, to place the colour bar [left, bottom, width, height] (of cbar)
+    colorbar_axes = fig.add_axes([0.15, 0.1, 0.73, 0.03])
+
     # Create plot frames
     with writer.saving(fig, filename, 300):
         for t in range(23): #8):
@@ -82,13 +85,11 @@ def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior):
             plt.gca().coastlines('50m', color='white')
             plt.title('Op nowcast', fontsize=18)
 
-            # Add axes to the figure, to place the colour bar [left, bottom, width, height] (of cbar)
-            colorbar_axes = fig.add_axes([0.15, 0.1, 0.73, 0.03])
             # Add the colour bar
             cbar = plt.colorbar(cf, colorbar_axes, orientation='horizontal')
             cbar.ax.set_xlabel('Rain rate (mm/hr)')
 
-            fig.suptitle('T+{:02d} min'.format((t+1)*5), fontsize=30)  #(t+1)*15
+            fig.suptitle('T+{:02d} min'.format((t+1)*5), fontsize=30)
             # Save frame
             writer.grab_frame()
     plt.close()
@@ -119,7 +120,7 @@ def load_nowcast(dt_str, sample_points, domain):
                 nowcast = cubelist[i]
 
     nc_cube = nowcast.interpolate(sample_points, iris.analysis.Linear())
-    nowcast_cube = nc_cube[:, domain[0]:domain[1], domain[2]:domain[3]]/32 
+    nowcast_cube = nc_cube[:, domain[0]:domain[1], domain[2]:domain[3]]/32
     for cu in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7]: #range(8): #[1, 3]: #, 5]: #i.e. t+30, t+60, t+90
         n_cubelist.append(nowcast_cube[cu])
 
