@@ -48,7 +48,7 @@ dtype = torch.FloatTensor
 def main(startdate, model_path, model, domain, threshold):
 
     print('Model = ', model_path, model)
-    startdate = datetime.strptime('201807270000', '%Y%m%d%H%M') # for running inference for verification
+    startdate = datetime.strptime('201812210830', '%Y%m%d%H%M') # for running inference for verification
     enddate = datetime.strptime('201901010000', '%Y%m%d%H%M') # for running inference for verification
     dtime = startdate
 
@@ -76,8 +76,7 @@ def main(startdate, model_path, model, domain, threshold):
             #   '0911', '0915', '0917', '0918', '0919', '0920', '0922', '1007',
             #   '1008', '1011', '1012', '1013', '1014', '1031', '1102', '1103',
             #   '1106', '1107', '1108', '1109', '1110', '1112', '1113', '1120',
-            #   #'1127',
-            #   '1128', '1129', '1130', '1201', '1202', '1204', '1205',
+            #   '1127', '1128', '1129', '1130', '1201', '1202', '1204', '1205',
             #   '1206', '1207', '1208', '1215', '1216', '1217', '1218', '1219',
             #   '1220', '1221']
             #files_t = [f'/data/cr1/cbarth/phd/SVG/training_data/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
