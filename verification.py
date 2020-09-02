@@ -6,6 +6,7 @@ import pdb
 import os
 import matplotlib.pyplot as plt
 import iris.quickplot as qplt
+import iris.plot as iplt
 
 def main():
 
@@ -22,7 +23,7 @@ def main():
     # Choose variables
     thrshld = 1  # rain rate threshold (mm/hr)
     neighbourhood = 9 #25   # neighbourhood size (e.g. 9 = 3x3)
-    timesteps = [60] #30, 60]
+    timesteps = [30] #30, 60]
     data_split = 'test' #train'
     #---------------------------------------------------------------------#
 
@@ -106,10 +107,10 @@ def main():
 
     print('number of files: {}'.format(count_files))
 
-    #generate_pdf(all_radar, all_nn, all_on)
+    generate_pdf(all_radar, all_nn, all_on)
 
     print('T+{}'.format(flt))
-    generate_err_map(all_radar, all_nn, all_on, r_cubelist[0])
+    #generate_err_map(all_radar, all_nn, all_on, r_cubelist[0])
 
     pdb.set_trace()
 
@@ -168,23 +169,23 @@ def generate_pdf(all_radar, all_nn, all_on):
     plt.subplot(1,3,1)
     #plt.hist(radar_values, bins, log=True) #density=True, log=True)
     counts, _, patches = plt.hist(radar_values, bins, log=True) #density=True, log=True)
-    for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
+    #for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
     plt.ylim((0, 250000000))
     plt.xlabel('Rain rate (mm/hr)')
-    plt.title('Observed values')
+    plt.title('Observed')
     plt.subplot(1,3,2)
     #plt.hist(nn_values, bins, log=True) #density=True, log=True)
     counts, _, patches = plt.hist(nn_values, bins, log=True) #density=True, log=True)
-    for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
+    #for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
     plt.ylim((0, 250000000))
     plt.xlabel('Rain rate (mm/hr)')
-    plt.title('ML Predicted values')
+    plt.title('SVG (64mm/hr threshold)')
     plt.subplot(1,3,3)
     counts, _, patches = plt.hist(on_values, bins, log=True) #density=True, log=True)
-    for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
+    #for i, xy in enumerate(zip(bins, counts)): plt.annotate('%s' % counts[i], xy=xy, textcoords='data')
     plt.ylim((0, 250000000))
     plt.xlabel('Rain rate (mm/hr)')
-    plt.title('ON Predicted values')
+    plt.title('Operational nowcast')
     plt.show()
 
     #pdb.set_trace()
