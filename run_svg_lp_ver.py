@@ -19,9 +19,10 @@ import re
 from datetime import datetime, timedelta
 import time
 import matplotlib.animation as manimation
-
+import os.path
 import iris.plot as iplt
 import iris.quickplot as qplt
+from iris.experimental.equalise_cubes import equalise_attributes
 import matplotlib
 matplotlib.use('tkAgg')
 import matplotlib.pyplot as plt
@@ -47,8 +48,8 @@ dtype = torch.FloatTensor
 def main(startdate, model_path, model, domain, threshold):
 
     print('Model = ', model_path, model)
-    startdate = datetime.strptime('201801171030', '%Y%m%d%H%M') # for running inference for verification
-    enddate = datetime.strptime('201901010000', '%Y%m%d%H%M') # for running inference for verification
+    startdate = datetime.strptime('201912171645', '%Y%m%d%H%M') # for running inference for verification
+    enddate = datetime.strptime('201912172000', '%Y%m%d%H%M') # for running inference for verification
     dtime = startdate
 
     frame_predictor, posterior, prior, encoder, decoder, last_frame_skip = load_model(model_path, model)
@@ -62,8 +63,8 @@ def main(startdate, model_path, model, domain, threshold):
             files_v = []
             for dt in date_list:
                 dt_str = datetime.strftime(dt, '%Y%m%d%H%M')
-                #files_v.append('/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
-                files_v.append('/data/cr1/cbarth/phd/SVG/training_data/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
+                files_v.append('/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
+                #files_v.append('/data/cr1/cbarth/phd/SVG/training_data/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
             list_tst = []
             for file in files_v:
                 if os.path.isfile(file):
@@ -87,20 +88,26 @@ def main(startdate, model_path, model, domain, threshold):
                     hh = str(start_date[i])[21:23]
                     mi = str(start_date[i])[24:26]
                     dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
-                    # generate predictions
-                    test_x = next(testing_batch_generator)
-                    ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test', frame_predictor, posterior, prior, encoder, decoder, last_frame_skip)
 
-                    batch_number = 0
-                    # Find index of sample with highest SSIM score
-                    mean_ssim = np.mean(ssim[batch_number], 1)
-                    ordered = np.argsort(mean_ssim)
-                    sidx = ordered[-1]
-                    for t in range(n_eval):
-                        pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
-                        pred_cube.units = 'mm/hr'
-                        print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
-                    iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/model_output/plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
+                    #fname = "/data/cr1/cbarth/phd/SVG/model_output/{}/plots_nn_T{}_{}.nc".format(model[:-4], dt_str, model[:-4])
+                    fname = "/data/cr1/cbarth/phd/SVG/nn_T{}_{}.nc".format(model[:-4], dt_str, model[:-4])
+                    if not os.path.isfile(fname):
+                        # generate predictions
+                        test_x = next(testing_batch_generator)
+                        ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test', frame_predictor, posterior, prior, encoder, decoder, last_frame_skip)
+
+                        batch_number = 0
+                        # Find index of sample with highest SSIM score
+                        mean_ssim = np.mean(ssim[batch_number], 1)
+                        ordered = np.argsort(mean_ssim)
+                        sidx = ordered[-1]
+                        for t in range(n_eval):
+                            pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
+                            pred_cube.units = 'mm/hr'
+                            print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
+                        #iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/model_output/model624800/plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
+                        iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/test.nc")
+
 
             dtime = dtime + timedelta(minutes=15)
 
@@ -145,8 +152,8 @@ def prep_data(files, n_eval, domain, threshold):
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     timeformat = "%Y%m%d%H%M"
-    #regex = re.compile("^/data/cr1/cbarth/phd/SVG/verification_data/radar/(\d*)")
-    regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/(\d*)")
+    regex = re.compile("^/data/cr1/cbarth/phd/SVG/verification_data/radar/(\d*)")
+    #regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/(\d*)")
 
     def gettimestamp(thestring):
         m = regex.search(thestring)
@@ -160,12 +167,25 @@ def prep_data(files, n_eval, domain, threshold):
 
     dataset = []
     fn = sorted_files
-    cube = iris.load(fn)
-    if len(cube) > 1:
-        for i, cu in enumerate(cube):
-            if np.shape(cu.coord('time'))[0] == 1:
-                cube[i] = iris.util.new_axis(cu, 'time')
-        cube = cube.merge()
+    for i_f, ffile in enumerate(fn):
+        cube = iris.load_cube(ffile)
+        if i_f == 0:
+            cube_list = iris.cube.CubeList([cube])
+        else:
+            cube_list.append(cube)
+
+    equalise_attributes(cube_list)
+    cube = cube_list.merge()
+
+    #cube = iris.load(fn)
+    #if len(cube) > 1:
+    #    equalise_attributes(cube)
+    #    for i, cu in enumerate(cube):
+    #        if np.shape(cu.coord('time'))[0] == 1:
+    #            cube[i] = iris.util.new_axis(cu, 'time')
+    #        #cu.attributes['more_radars_bitmask'] = 90
+    #        #cube[i] = cu
+    #    cube = cube.concatenate_cube()
 
     cube = cube[0] / 32. #Convert to mm/hr
     cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
@@ -185,6 +205,10 @@ def prep_data(files, n_eval, domain, threshold):
         data[np.where(data > threshold)] = threshold
         # Normalise data
         data = data / threshold
+
+        #Set data to zero for testing
+        #data = np.zeros(np.shape(data))
+
         start_date = cube.coord('forecast_reference_time')[0]
         dataset.append(data)
         dataset.append(data)

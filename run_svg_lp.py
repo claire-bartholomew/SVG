@@ -89,7 +89,7 @@ def main(startdate, model_path, model, domain, threshold):
                 test_x = next(testing_batch_generator)
                 ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test', frame_predictor, posterior, prior, encoder, decoder, last_frame_skip)
 
-                batch_number = 0 
+                batch_number = 0
                 # Find index of sample with highest SSIM score
                 mean_ssim = np.mean(ssim[batch_number], 1)
                 ordered = np.argsort(mean_ssim)
@@ -181,7 +181,7 @@ def prep_data(files, n_eval, domain, threshold):
         data[np.where(data < 0)] = 0.
         data[np.where(data > threshold)] = threshold
         # Normalise data
-        data = data / threshold 
+        data = data / threshold
         start_date = cube.coord('forecast_reference_time')[0]
         dataset.append(data)
         dataset.append(data)

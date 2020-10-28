@@ -13,13 +13,14 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201908141630' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
+    dt_str = '201909301500' #201909191200' #201908141730' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
-    domain = [288, 416, 100, 228] #scotland
-    #domain = [160, 288, 130, 258] # england (training data domain)
-    threshold = 64.
+    model = 'model778930.pth' #625308.pth' #624800.pth' #723607.pth' #712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    #domain = [288, 416, 100, 228] #scotland
+    domain = [160, 288, 130, 258] # england (training data domain)
+    r_domain = [185, 263, 155, 233] #reduced domain to avoid border effects
+    threshold = 64. #100. #64.
     #--------------------------------------------------------------
 
     if prior == 'fp':
@@ -36,11 +37,11 @@ def main():
     run_svg.main(dt, model_path, model, domain, threshold)
 
     # Neural network output
-    nn_cubelist = load_nn_pred(dt_str, model)
+    nn_cubelist = load_nn_pred(dt_str, model, r_domain)
     # Radar sequence
-    r_cubelist = load_radar(dt, dt_str, sample_points, domain)
+    r_cubelist = load_radar(dt, dt_str, sample_points, r_domain)
     # Operational nowcast output
-    n_cubelist = load_nowcast(dt_str, sample_points, domain)
+    n_cubelist = load_nowcast(dt_str, sample_points, r_domain)
 
     animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior)
     #pdb.set_trace()
@@ -94,14 +95,17 @@ def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior):
             writer.grab_frame()
     plt.close()
 
-def load_nn_pred(dt_str, model):
+def load_nn_pred(dt_str, model, domain):
     nn_cubelist = []
     nn_f = '/data/cr1/cbarth/phd/SVG/plots_nn_T{}_{}.nc'.format(dt_str, model[:-4])
+    #nn_f = '/data/cr1/cbarth/phd/SVG/test.nc'
     print(nn_f)
     # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
     cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
     nn_cubes = list(cube_gen)
-    nn_cube = nn_cubes[0]
+    nn_cube1 = nn_cubes[0]
+    nn_cube = nn_cube1[:, 25:-25, 25:-25]
+    print(nn_cube)
     for t in range(1, 25): #[3, 6, 9, 12, 15, 18, 21, 24]:
         nn_cubelist.append(nn_cube)
 
@@ -136,6 +140,7 @@ def load_radar(dt, dt_str, sample_points, domain):
         r_cube = radar[0].interpolate(sample_points, iris.analysis.Linear())
         radar_cube = r_cube[domain[0]:domain[1], domain[2]:domain[3]]/32
         r_cubelist.append(radar_cube)
+        print(radar_cube)
         #pdb.set_trace()
 
     return r_cubelist
