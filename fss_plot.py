@@ -1,8 +1,24 @@
 import iris
 import matplotlib.pyplot as plt
 import numpy as np
+import pdb
 
 timestep = [15, 30, 45, 60]
+
+on_new_4 = [0.84, 0.72, 0.63, 0.55]
+nn_new_4 = [0.84, 0.62, 0.47, 0.38]
+p_new_4 = [0.56, 0.34, 0.24, 0.19]
+
+plt.plot(timestep, on_new_4, color='blue', linestyle='-', label='Operational nowcast')
+plt.plot(timestep, nn_new_4, color='red', linestyle='-', label='ML prediction')
+plt.plot(timestep, p_new_4, color='green', linestyle='-', label='Persistence')
+plt.xlabel('Time (minutes)')
+plt.ylabel('FSS')
+plt.legend(fontsize=10)
+plt.show()
+plt.close()
+
+pdb.set_trace()
 
 #operational nowcast
 on_fss_1 = [0.84, 0.69, 0.6, 0.54]
@@ -78,8 +94,6 @@ plt.ylabel('FSS')
 plt.legend(fontsize=10, ncol=4)
 plt.show()
 plt.close()
-
-
 
 plt.plot(timestep, lp_train_mean, color='blue', linestyle='--', label='train')
 plt.plot(timestep, lp_fss_mean, color='red', linestyle='--', label='validation')
