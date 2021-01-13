@@ -205,25 +205,20 @@ def prep_data(files, filedir):
         cube = cube[0] / 32.
         cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
         data = cube1.data
-        #pdb.set_trace()
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
+        #data = data[:, 288:416, 100:228]
 
+        # limit range of data
+        #data[np.where(data < 4)] = 0. #mask data to concentrate on higher rain rates
         data[np.where(data < 0)] = 0.
-        #data[np.where(data > 32)] = 32.
         data[np.where(data > 64)] = 64.
-        #maxi = np.amax(data)
-        #print('max value in data = ', maxi)
+
+        #Log transform of data
+        data = np.log(data+1)
 
         # Normalise data
-        #data = data / 32.
-        data = data / 64.
-        #maxi = 361.06317874152296
-        #data = data / maxi
-
-        # Standardise data (stats calculated from rainy days list)
-        #mean = 0.217
-        #std = 0.875
-        #data = (data - mean) / std
+        #data = data / 64.
+        data = data / np.log(64.)
 
         if len(data) < 10:
             print(fn)
@@ -244,7 +239,7 @@ def prep_data(files, filedir):
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
                         batch_size=opt.batch_size,
-                        shuffle=True,
+                        shuffle=False, #True,
                         #drop_last=True,
                         pin_memory=True)
     return loader
@@ -482,7 +477,6 @@ for epoch in range(opt.niter):
         epoch_mse += mse
         epoch_kld += kld
 
-
     #progress.finish()
     #utils.clear_progressbar()
 
@@ -510,7 +504,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model9.pth' % opt.log_dir)
+        '%s/model4.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
