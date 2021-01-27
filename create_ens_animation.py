@@ -13,15 +13,19 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201908141630' #201909291300' #201908141630' #201909291300'
+    dt_str = '201909291300' #201908141630' #201909291300' #201908141630' #201909291300'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    #model1 = 'model131219.pth'
-    model1 = 'model598965.pth'
-    model2 = 'model585435.pth'
+    model0 = 'model131219.pth'
+    model1 = 'model624800.pth'
+    model2 = 'model530043.pth'
     model3 = 'model566185.pth'
     model4 = 'model582525.pth'
-    model5 = 'model590512.pth'
+    model5 = 'model585435.pth'
+    model6 = 'model590512.pth'
+    model7 = 'model601712.pth'
+    model8 = 'model848512.pth'
+    model9 = 'model876319.pth'
     #--------------------------------------------------------------
 
     if prior == 'fp':
@@ -33,10 +37,13 @@ def main():
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
+    domain = [160, 288, 130, 258] # england (training data domain)
+    threshold = 64.
+
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
-    for model in [model1, model2, model3, model4, model5]:
-        run_svg.main(dt, model_path, model)
+    #for model in [model0, model1, model2, model3, model4, model5, model6, model7, model8, model9]:
+    #    run_svg.main(dt, model_path, model, domain, threshold)
 
     # Neural network output
     nn_cubelist1 = load_nn_pred(dt_str, model1)
@@ -44,16 +51,22 @@ def main():
     nn_cubelist3 = load_nn_pred(dt_str, model3)
     nn_cubelist4 = load_nn_pred(dt_str, model4)
     nn_cubelist5 = load_nn_pred(dt_str, model5)
+    nn_cubelist6 = load_nn_pred(dt_str, model6)
+    nn_cubelist7 = load_nn_pred(dt_str, model7)
+    nn_cubelist8 = load_nn_pred(dt_str, model8)
+    nn_cubelist9 = load_nn_pred(dt_str, model9)
+    nn_cubelist0 = load_nn_pred(dt_str, model0)
 
     # Radar sequence
     r_cubelist = load_radar(dt, dt_str, sample_points)
     ## Operational nowcast output
     #n_cubelist = load_nowcast(dt_str, sample_points)
 
-    animate(r_cubelist, nn_cubelist1, nn_cubelist2, nn_cubelist3, nn_cubelist4, nn_cubelist5, dt_str, prior)
+    animate(r_cubelist, nn_cubelist0, nn_cubelist1, nn_cubelist2, nn_cubelist3, nn_cubelist4,
+            nn_cubelist5, nn_cubelist6, nn_cubelist7, nn_cubelist8, nn_cubelist9, dt_str, prior)
     #pdb.set_trace()
 
-def animate(r_cubelist, nn_cubelist1, nn_cubelist2, nn_cubelist3, nn_cubelist4, nn_cubelist5, dt_str, prior):
+def animate(r_cubelist, nn_cubelist0, nn_cubelist1, nn_cubelist2, nn_cubelist3, nn_cubelist4, nn_cubelist5, nn_cubelist6, nn_cubelist7, nn_cubelist8, nn_cubelist9, dt_str, prior):
     # define colours and levels for colorbar
     colors = ['black', 'cornflowerblue', 'royalblue', 'blue', 'lime', 'yellow', 'orange', 'red', 'fuchsia'] #, 'white']
     levels = [0, 0.1, 0.25, 0.5, 1., 2., 4., 8. ,16., 32.]
@@ -63,7 +76,7 @@ def animate(r_cubelist, nn_cubelist1, nn_cubelist2, nn_cubelist3, nn_cubelist4, 
     metadata = dict(artist='Matplotlib')
     writer = FFMpegWriter(fps=2, metadata=metadata)
     # Configure plots
-    fig = plt.figure(figsize=(12, 10))
+    fig = plt.figure(figsize=(15, 8))
 
     # Set video filename
     filename = "animations/{}_ens_radar_animation_{}.mp4".format(prior, dt_str)
@@ -72,53 +85,75 @@ def animate(r_cubelist, nn_cubelist1, nn_cubelist2, nn_cubelist3, nn_cubelist4, 
     with writer.saving(fig, filename, 300):
         for t in range(23): #8):
 
-            for a, arr in enumerate([nn_cubelist2[0][t+1], nn_cubelist3[0][t+1], nn_cubelist4[0][t+1], nn_cubelist5[0][t+1]]):
+            for a, arr in enumerate([nn_cubelist1[0][t+1], nn_cubelist2[0][t+1],
+                                     nn_cubelist3[0][t+1], nn_cubelist4[0][t+1],
+                                     nn_cubelist5[0][t+1], nn_cubelist6[0][t+1],
+                                     nn_cubelist7[0][t+1], nn_cubelist8[0][t+1],
+                                     nn_cubelist9[0][t+1]]):
+
                 if a == 0:
-                    max_arr = np.maximum(nn_cubelist1[0][t+1].data, arr.data)
+                    max_arr = np.maximum(nn_cubelist0[0][t+1].data, arr.data)
                     #mask = np.where()
                 else:
                     max_arr = np.maximum(max_arr, arr.data)
             max_cube = nn_cubelist1[0][t+1].copy()
             max_cube.data = max_arr
 
-            mean_arr = (nn_cubelist1[0][t+1].data + nn_cubelist1[0][t+1].data + nn_cubelist2[0][t+1].data + 
-                        nn_cubelist3[0][t+1].data + nn_cubelist4[0][t+1].data + nn_cubelist5[0][t+1].data) / 5
+            mean_arr = (nn_cubelist0[0][t+1].data + nn_cubelist1[0][t+1].data + nn_cubelist2[0][t+1].data +
+                        nn_cubelist3[0][t+1].data + nn_cubelist4[0][t+1].data + nn_cubelist5[0][t+1].data +
+                        nn_cubelist6[0][t+1].data + nn_cubelist7[0][t+1].data + nn_cubelist8[0][t+1].data +
+                        nn_cubelist9[0][t+1].data) / 10
             mean_cube = nn_cubelist1[0][t+1].copy()
             mean_cube.data = mean_arr
 
-            threshold = 2
+            threshold = 4
             #masked_arr = np.copy(nn_cubelist1[0][t+1])
             masked_arr = np.zeros((np.shape(nn_cubelist1[0][t+1])[0], np.shape(nn_cubelist1[0][t+1])[1]))
 
-            for a, arr in enumerate([nn_cubelist1[0][t+1].data, nn_cubelist2[0][t+1].data, nn_cubelist3[0][t+1].data, nn_cubelist4[0][t+1].data, nn_cubelist5[0][t+1].data]):
+            for a, arr in enumerate([nn_cubelist0[0][t+1].data, nn_cubelist1[0][t+1].data, nn_cubelist2[0][t+1].data,
+                                     nn_cubelist3[0][t+1].data, nn_cubelist4[0][t+1].data, nn_cubelist5[0][t+1].data,
+                                     nn_cubelist6[0][t+1].data, nn_cubelist7[0][t+1].data, nn_cubelist8[0][t+1].data,
+                                     nn_cubelist9[0][t+1].data]):
                 mask = np.where(arr >= threshold)
                 masked_arr[mask] += 1
-            masked_arr = masked_arr/5.
+            masked_arr = masked_arr/10.
             prob_cube = nn_cubelist1[0][t+1].copy()
             prob_cube.data = masked_arr
 
             print('time = ', (t+1)*5) #15)
-            ax = fig.add_subplot(3,3,1)
-            cf = subplot(r_cubelist[t], 'Radar', levels, colors)
-            ax = fig.add_subplot(3,3,2)
-            cf = subplot(nn_cubelist1[0][t+1], 'Model 1', levels, colors)
-            ax = fig.add_subplot(3,3,3)
-            cf = subplot(nn_cubelist2[0][t+1], 'Model 2', levels, colors)
-            ax = fig.add_subplot(3,3,4)
-            cf = subplot(nn_cubelist3[0][t+1], 'Model 3', levels, colors)
-            ax = fig.add_subplot(3,3,5)
-            cf = subplot(nn_cubelist4[0][t+1], 'Model 4', levels, colors)
-            ax = fig.add_subplot(3,3,6)
-            cf = subplot(nn_cubelist5[0][t+1], 'Model 5', levels, colors)
+            ax = fig.add_subplot(2,4,1)
+            cf = subplot(nn_cubelist0[0][t+1], '', levels, colors)
+            ax = fig.add_subplot(2,4,2)
+            cf = subplot(nn_cubelist1[0][t+1], '', levels, colors)
+            ax = fig.add_subplot(2,4,3)
+            cf = subplot(nn_cubelist2[0][t+1], '', levels, colors)
+            ax = fig.add_subplot(2,4,4)
+            cf = subplot(nn_cubelist3[0][t+1], '', levels, colors)
+            ax = fig.add_subplot(2,4,5)
+            cf = subplot(nn_cubelist4[0][t+1], '', levels, colors)
+            ax = fig.add_subplot(2,4,6)
+            cf = subplot(nn_cubelist5[0][t+1], '', levels, colors)
+            ax = fig.add_subplot(2,4,7)
+            cf = subplot(nn_cubelist6[0][t+1], '', levels, colors)
+            #ax = fig.add_subplot(4,3,9)
+            #cf = subplot(nn_cubelist7[0][t+1], '', levels, colors)
+            #ax = fig.add_subplot(3,4,8)
+            #cf = subplot(nn_cubelist8[0][t+1], '', levels, colors)
+            #ax = fig.add_subplot(3,4,9)
+            #cf = subplot(nn_cubelist9[0][t+1], '', levels, colors)
 
-            ax = fig.add_subplot(3,3,7)
-            cf = subplot(mean_cube, 'Mean', levels, colors)
-            ax = fig.add_subplot(3,3,8)
-            cf = subplot(max_cube, 'Max', levels, colors)
-            ax = fig.add_subplot(3,3,9)
-            colors2 = ['black', 'blue', 'lime', 'yellow', 'orange', 'red'] #s, 'fuchsia'] #, 'white']
-            levels2 = [0, 0.2, 0.4, 0.6, 0.8, 1.] 
-            cf2 = subplot(prob_cube, 'Prob > {} mm/hr'.format(threshold), levels2, colors2)
+            ax = fig.add_subplot(2,4,8)
+            cf = subplot(r_cubelist[t], 'Radar', levels, colors)
+
+            #ax = fig.add_subplot(3,3,7)
+            #cf = subplot(mean_cube, 'Mean', levels, colors)
+            #ax = fig.add_subplot(3,3,8)
+            #cf = subplot(max_cube, 'Max', levels, colors)
+
+            #ax = fig.add_subplot(3,4,12)
+            #colors2 = ['black', 'blue', 'lime', 'yellow', 'orange', 'red'] #s, 'fuchsia'] #, 'white']
+            #levels2 = [0, 0.2, 0.4, 0.6, 0.8, 1.]
+            #cf2 = subplot(prob_cube, 'Prob > {} mm/hr'.format(threshold), levels2, colors2)
 
             # Add axes to the figure, to place the colour bar [left, bottom, width, height] (of cbar)
             colorbar_axes = fig.add_axes([0.15, 0.05, 0.73, 0.03])
