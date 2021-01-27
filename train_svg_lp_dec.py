@@ -52,7 +52,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model4.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model5.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -182,6 +182,8 @@ def prep_data(files, filedir):
 
     # sort files by datetime
     sorted_files = sorted(files, key=gettimestamp)
+    #reduce to every 6th files, i.e. every half hour
+    sorted_files = sorted_files[0::6]
 
     # only keep filenames where 10 consecutive files exist at 5 min intervals
     sorted_files = list(chunks(sorted_files, 10))
@@ -193,7 +195,7 @@ def prep_data(files, filedir):
             dt1 = datetime.datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
             t9 = group[9].find('2018')
             dt2 = datetime.datetime.strptime(group[9][t9:t9+12], '%Y%m%d%H%M')
-            if (dt2-dt1 != datetime.timedelta(minutes=45)):
+            if (dt2-dt1 != datetime.timedelta(minutes=270)): #45)): 45 for sequences of 5, 270 for sequences of 30
                 print(dt2-dt1, 'remove files')
                 sorted_files.remove(group)
     count = 0
@@ -504,7 +506,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model4.pth' % opt.log_dir)
+        '%s/model5.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
