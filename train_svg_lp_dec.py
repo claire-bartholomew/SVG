@@ -52,7 +52,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model5.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model6.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -208,7 +208,7 @@ def prep_data(files, filedir):
         cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
         data = cube1.data
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
-        #data = data[:, 288:416, 100:228]
+        #data = data[:, 288:416, 100:228] # scottish domain
 
         # limit range of data
         #data[np.where(data < 4)] = 0. #mask data to concentrate on higher rain rates
@@ -216,11 +216,11 @@ def prep_data(files, filedir):
         data[np.where(data > 64)] = 64.
 
         #Log transform of data
-        data = np.log(data+1)
+        #data = np.log(data+1)
 
         # Normalise data
-        #data = data / 64.
-        data = data / np.log(64.)
+        data = data / 64.
+        #data = data / np.log(64.)
 
         if len(data) < 10:
             print(fn)
@@ -228,7 +228,8 @@ def prep_data(files, filedir):
             count += 1
         else:
             dataset.append(data)
-
+    print(dataset)
+    print(dataset[0])
     print('count', count)
     #print('data max', np.amax(dataset))
     #dataset = dataset / np.amax(dataset)
@@ -506,7 +507,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model5.pth' % opt.log_dir)
+        '%s/model6.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
