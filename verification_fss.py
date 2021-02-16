@@ -17,8 +17,9 @@ def main():
     # Choose variables
     thrshld = 4 # rain rate threshold (mm/hr)
     neighbourhood = 36 #25   # neighbourhood size (e.g. 9 = 3x3)
-    timestep = 30
+    timestep = 10 #30 # forecast lead time
     domain = [160, 288, 130, 258] # england (training data domain)
+    ts = 5 #30 #model timestep separation
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -44,11 +45,11 @@ def main():
         # Check if enough rain to be worth verifying
         if np.mean(r_cube.data) > 0: #0.1:
             print(dt)
-            nn_cube, skip = load_nn_pred(dt_str, timestep, model_n)
-            on_cube, skip0 = load_op_nowcast(dt_str, sample_points, timestep, domain)
+            nn_cube, skip = load_nn_pred(dt_str, timestep, model_n, ts)
+            #on_cube, skip0 = load_op_nowcast(dt_str, sample_points, timestep, domain)
             p_cube = load_persistence(dt, sample_points, timestep, domain)
-
-            if ((skip == False) & (skip0 == False)):
+            pdb.set_trace()
+            if ((skip == False)): # & (skip0 == False)):
                 count += 1
                 #quickplot(nn_cube, r_cube)
 
@@ -57,8 +58,8 @@ def main():
                                                  threshold=thrshld)
                 nn_fraction = generate_fractions(nn_cube, n_size=neighbourhood,
                                                  threshold=thrshld)
-                on_fraction = generate_fractions(on_cube, n_size=neighbourhood,
-                                                threshold=thrshld)
+                #on_fraction = generate_fractions(on_cube, n_size=neighbourhood,
+                #                                threshold=thrshld)
                 p_fraction = generate_fractions(p_cube, n_size=neighbourhood,
                                                 threshold=thrshld)
 
@@ -67,9 +68,9 @@ def main():
                 fbs_nn_sum += fbs
                 fbs_nn_worst_sum += fbs_worst
                 # Calculate FBS and FBSworst for ON
-                fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_fraction)
-                fbs_on_sum += fbs_on
-                fbs_on_worst_sum += fbs_worst_on
+                #fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_fraction)
+                #fbs_on_sum += fbs_on
+                #fbs_on_worst_sum += fbs_worst_on
                 # Calculate FBS and FBSworst for persistence
                 fbs_p, fbs_worst_p = calculate_fbs(ob_fraction, p_fraction)
                 fbs_p_sum += fbs_p
@@ -81,9 +82,9 @@ def main():
     print('FSS for NN at t+{} = {}'.format(timestep, fss_nn))
 
     # Calculate FSS for ON
-    print(fbs_on_sum, fbs_on_worst_sum)
-    fss_on = 1 - fbs_on_sum / fbs_on_worst_sum
-    print('FSS for ON at t+{} = {}'.format(timestep, fss_on))
+    #print(fbs_on_sum, fbs_on_worst_sum)
+    #fss_on = 1 - fbs_on_sum / fbs_on_worst_sum
+    #print('FSS for ON at t+{} = {}'.format(timestep, fss_on))
 
     # Calculate FSS for persistence
     print(fbs_p_sum, fbs_p_worst_sum)
@@ -92,7 +93,7 @@ def main():
 
     print('count = ', count)
 
-def load_nn_pred(dt_str, timestep, model_n):
+def load_nn_pred(dt_str, timestep, model_n, ts):
     nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}/plots_nn_T{}_model{}.nc'.format(model_n, dt_str, model_n)
     if os.path.exists(nn_f):
         skip = False
@@ -101,7 +102,7 @@ def load_nn_pred(dt_str, timestep, model_n):
         nn_cubes = list(cube_gen)
         nn_cube1 = nn_cubes[0]
         # Get index for timestep and extract data
-        nn_cube = nn_cube1[int(timestep / 5)]
+        nn_cube = nn_cube1[int(timestep / ts)]
     else:
         skip = True
 
