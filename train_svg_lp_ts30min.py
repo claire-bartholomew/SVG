@@ -182,8 +182,8 @@ def prep_data(files, filedir):
 
     # sort files by datetime
     sorted_files = sorted(files, key=gettimestamp)
-    ##reduce to every 6th files, i.e. every half hour
-    #sorted_files = sorted_files[0::6]
+    #reduce to every 6th files, i.e. every half hour
+    sorted_files = sorted_files[0::6]
 
     # only keep filenames where 10 consecutive files exist at 5 min intervals
     sorted_files = list(chunks(sorted_files, 10))
@@ -195,7 +195,7 @@ def prep_data(files, filedir):
             dt1 = datetime.datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
             t9 = group[9].find('2018')
             dt2 = datetime.datetime.strptime(group[9][t9:t9+12], '%Y%m%d%H%M')
-            if (dt2-dt1 != datetime.timedelta(minutes=45)): 45 for sequences of 5, 270 for sequences of 30
+            if (dt2-dt1 != datetime.timedelta(minutes=270)): #45)): 45 for sequences of 5, 270 for sequences of 30
                 print(dt2-dt1, 'remove files')
                 sorted_files.remove(group)
     count = 0

@@ -31,8 +31,8 @@ parser.add_argument('--epoch_size', type=int, default=600, help='epoch size')
 parser.add_argument('--image_width', type=int, default=128, help='the height / width of the input image to network')
 parser.add_argument('--channels', default=1, type=int)
 parser.add_argument('--dataset', default='radar', help='dataset to train with')
-parser.add_argument('--n_past', type=int, default=3, help='number of frames to condition on')
-parser.add_argument('--n_future', type=int, default=7, help='number of frames to predict during training')
+parser.add_argument('--n_past', type=int, default=7, help='number of frames to condition on')
+parser.add_argument('--n_future', type=int, default=3, help='number of frames to predict during training')
 parser.add_argument('--n_eval', type=int, default=7, help='number of frames to predict during eval')
 parser.add_argument('--rnn_size', type=int, default=256, help='dimensionality of hidden layer')
 parser.add_argument('--prior_rnn_layers', type=int, default=1, help='number of layers')
@@ -52,7 +52,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model6.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model7.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -182,7 +182,7 @@ def prep_data(files, filedir):
 
     # sort files by datetime
     sorted_files = sorted(files, key=gettimestamp)
-    ##reduce to every 6th files, i.e. every half hour
+    #reduce to every 6th files, i.e. every half hour
     #sorted_files = sorted_files[0::6]
 
     # only keep filenames where 10 consecutive files exist at 5 min intervals
@@ -195,7 +195,7 @@ def prep_data(files, filedir):
             dt1 = datetime.datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
             t9 = group[9].find('2018')
             dt2 = datetime.datetime.strptime(group[9][t9:t9+12], '%Y%m%d%H%M')
-            if (dt2-dt1 != datetime.timedelta(minutes=45)): 45 for sequences of 5, 270 for sequences of 30
+            if (dt2-dt1 != datetime.timedelta(minutes=45)): #45 for sequences of 5, 270 for sequences of 30
                 print(dt2-dt1, 'remove files')
                 sorted_files.remove(group)
     count = 0
@@ -507,7 +507,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model6.pth' % opt.log_dir)
+        '%s/model7.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
