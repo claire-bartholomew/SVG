@@ -13,13 +13,13 @@ def main():
 
     count = 0
 
-    model_n = '624800' #842306' #625308' #624800' #'131219'
+    model_n = '624800' #1734435' #624800' #842306' #625308' #624800' #'131219'
     # Choose variables
     thrshld = 4 # rain rate threshold (mm/hr)
     neighbourhood = 36 #25   # neighbourhood size (e.g. 9 = 3x3)
-    timestep = 10 #30 # forecast lead time
+    leadtime = 30 #30 # forecast lead time
     domain = [160, 288, 130, 258] # england (training data domain)
-    ts = 5 #30 #model timestep separation
+    ts = 5 #5 #30 #model timestep separation
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -27,7 +27,7 @@ def main():
 
     radar_dir = '/data/cr1/cbarth/phd/SVG/verification_data/radar/'
     files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in [1, 5, 9]\
-             for dd in range(2, 31) for h in range(24) for mi in range(0, 60, 15)] #[0]]
+             for dd in range(2, 30) for h in range(24) for mi in range(0, 60, 15)] #[0]]
 
     fbs_nn_sum = 0
     fbs_nn_worst_sum = 0
@@ -41,14 +41,14 @@ def main():
         dt_str = dt.strftime('%Y%m%d%H%M')
 
         # Load radar data
-        r_cube = load_radar(dt, sample_points, timestep, domain)
+        r_cube = load_radar(dt, sample_points, leadtime, domain, ts)
         # Check if enough rain to be worth verifying
         if np.mean(r_cube.data) > 0: #0.1:
             print(dt)
-            nn_cube, skip = load_nn_pred(dt_str, timestep, model_n, ts)
-            #on_cube, skip0 = load_op_nowcast(dt_str, sample_points, timestep, domain)
-            p_cube = load_persistence(dt, sample_points, timestep, domain)
-            pdb.set_trace()
+            nn_cube, skip = load_nn_pred(dt_str, leadtime, model_n, ts)
+            #on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
+            p_cube = load_persistence(dt, sample_points, leadtime, domain)
+            #pdb.set_trace()
             if ((skip == False)): # & (skip0 == False)):
                 count += 1
                 #quickplot(nn_cube, r_cube)
@@ -79,21 +79,21 @@ def main():
     # Calculate FSS for NN (following method in Roberts (2008))
     print(fbs_nn_sum, fbs_nn_worst_sum)
     fss_nn = 1 - fbs_nn_sum / fbs_nn_worst_sum
-    print('FSS for NN at t+{} = {}'.format(timestep, fss_nn))
+    print('FSS for NN at t+{} = {}'.format(leadtime, fss_nn))
 
     # Calculate FSS for ON
     #print(fbs_on_sum, fbs_on_worst_sum)
     #fss_on = 1 - fbs_on_sum / fbs_on_worst_sum
-    #print('FSS for ON at t+{} = {}'.format(timestep, fss_on))
+    #print('FSS for ON at t+{} = {}'.format(leadtime, fss_on))
 
     # Calculate FSS for persistence
     print(fbs_p_sum, fbs_p_worst_sum)
     fss_p = 1 - fbs_p_sum / fbs_p_worst_sum
-    print('FSS for persistence at t+{} = {}'.format(timestep, fss_p))
-
+    print('FSS for persistence at t+{} = {}'.format(leadtime, fss_p))
+    print('model = ', model_n)
     print('count = ', count)
 
-def load_nn_pred(dt_str, timestep, model_n, ts):
+def load_nn_pred(dt_str, leadtime, model_n, ts):
     nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}/plots_nn_T{}_model{}.nc'.format(model_n, dt_str, model_n)
     if os.path.exists(nn_f):
         skip = False
@@ -101,16 +101,16 @@ def load_nn_pred(dt_str, timestep, model_n, ts):
         cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
         nn_cubes = list(cube_gen)
         nn_cube1 = nn_cubes[0]
-        # Get index for timestep and extract data
-        nn_cube = nn_cube1[int(timestep / ts)]
+        # Get index for leadtime and extract data
+        nn_cube = nn_cube1[int(leadtime / ts + 2)]
     else:
         skip = True
 
     return nn_cube, skip
 
-def load_persistence(dt, sample_points, timestep, domain):
+def load_persistence(dt, sample_points, ts, domain):
     # Persistence forecast
-    persist_dt = dt - timedelta(minutes=timestep)
+    persist_dt = dt + timedelta(minutes=ts*2)
     persist_dt_str = persist_dt.strftime('%Y%m%d%H%M')
     persist_radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(persist_dt_str)
 
@@ -120,7 +120,7 @@ def load_persistence(dt, sample_points, timestep, domain):
 
     return persist_cube
 
-def load_op_nowcast(dt_str, sample_points, timestep, domain):
+def load_op_nowcast(dt_str, sample_points, leadtime, domain):
     # Load nowcast data
     nwcst_f = '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/{}_u1096_ng_pp_precip_2km'.format(dt_str)
     if os.path.exists(nwcst_f):
@@ -140,8 +140,8 @@ def load_op_nowcast(dt_str, sample_points, timestep, domain):
 
             nc_cube = nowcast.interpolate(sample_points, iris.analysis.Linear())
             nowcast_cube = nc_cube[:, domain[0]:domain[1], domain[2]:domain[3]] / 32
-            # Get index for timesteps
-            on_cube = nowcast_cube[int(timestep / 30 * 2 - 1)]
+            # Get index for leadtimes
+            on_cube = nowcast_cube[int(leadtime / 30 * 2 - 1)]
             on_cube.units = 'mm/hr'
     else:
         skip = True
@@ -149,9 +149,9 @@ def load_op_nowcast(dt_str, sample_points, timestep, domain):
 
     return on_cube, skip
 
-def load_radar(dt, sample_points, timestep, domain):
+def load_radar(dt, sample_points, leadtime, domain, ts):
     # Load radar data
-    dt_str = (dt + timedelta(minutes = timestep)).strftime('%Y%m%d%H%M')
+    dt_str = (dt + timedelta(minutes = leadtime+ts*2)).strftime('%Y%m%d%H%M')
     radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str)
     radar = iris.load(radar_f)
     r_cube = radar[0].interpolate(sample_points, iris.analysis.Linear())
