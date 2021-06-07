@@ -31,6 +31,8 @@ def main(leadtime):
 
     fbs_nn_sum = 0
     fbs_nn_worst_sum = 0
+    fbs_nn_e_sum = 0
+    fbs_nn_e_worst_sum = 0    
     fbs_on_sum = 0
     fbs_on_worst_sum = 0
     fbs_p_sum = 0
@@ -46,7 +48,7 @@ def main(leadtime):
         # Check if enough rain to be worth verifying
         if np.mean(r_cube.data) > 0.1: #0
             print(dt)
-            nn_cube, skip = load_nn_pred(dt_str, leadtime, model_n, ts, ens_n)
+            nn_cube, skip = load_nn_pred_det(dt_str, leadtime, model_n, ts)
             #on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
             p_cube = load_persistence(dt, sample_points, ts, domain)
             if ((skip == False)): # & (skip0 == False)):
@@ -60,19 +62,26 @@ def main(leadtime):
                 #                                threshold=thrshld)
                 p_fraction = generate_fractions(p_cube, n_size=neighbourhood,
                                                 threshold=thrshld)
+                nn_fraction = generate_fractions(nn_cube, n_size=neighbourhood,
+                                                 threshold=thrshld)
+
                 ens_nn_fraction = 0
                 for ens_n in range(30):
                     nn_cube, skip = load_nn_pred(dt_str, leadtime, model_n, ts, ens_n)
-                    nn_fraction = generate_fractions(nn_cube, n_size=neighbourhood,
-                                                     threshold=thrshld)
-                    ens_nn_fraction += nn_fraction
+                    e_nn_fraction = generate_fractions(nn_cube, n_size=neighbourhood,
+                                                       threshold=thrshld)
+                    ens_nn_fraction += e_nn_fraction
 
                 ens_nn_fraction = ens_nn_fraction / 30.
 
                 # Calculate FBS and FBSworst for NN
-                fbs, fbs_worst = calculate_fbs(ob_fraction, ens_nn_fraction)
+                fbs, fbs_worst = calculate_fbs(ob_fraction, nn_fraction)
                 fbs_nn_sum += fbs
                 fbs_nn_worst_sum += fbs_worst
+                # Calculate FBS and FBSworst for ensemble NN
+                fbs_e, fbs_e_worst = calculate_fbs(ob_fraction, ens_nn_fraction)
+                fbs_nn_e_sum += fbs_e
+                fbs_nn_e_worst_sum += fbs_e_worst
                 # Calculate FBS and FBSworst for ON
                 #fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_fraction)
                 #fbs_on_sum += fbs_on
@@ -82,7 +91,6 @@ def main(leadtime):
                 fbs_p_sum += fbs_p
                 fbs_p_worst_sum += fbs_worst_p
     # for outputs
-    print('ENSEMBLE FSS')
     print('model = ', model_n)
     print('count = ', count)
     print('threshold = ', thrshld)
@@ -93,12 +101,17 @@ def main(leadtime):
     fss_nn = 1 - fbs_nn_sum / fbs_nn_worst_sum
     print('====================================')
     print('FSS for NN at t+{} = {}'.format(leadtime, fss_nn))
-
+    # Calculate FSS for NN ensemble
+    print(fbs_nn_e_sum, fbs_nn_e_worst_sum)
+    fss_e_nn = 1 - fbs_nn_e_sum / fbs_nn_e_worst_sum
+    print('====================================')
+    print('ENSEMBLE FSS')
+    print('FSS for ensemble NN at t+{} = {}'.format(leadtime, fss_e_nn))
     # Calculate FSS for ON
     #print(fbs_on_sum, fbs_on_worst_sum)
     #fss_on = 1 - fbs_on_sum / fbs_on_worst_sum
     #print('FSS for ON at t+{} = {}'.format(leadtime, fss_on))
-
+    print('====================================')
     # Calculate FSS for persistence
     print(fbs_p_sum, fbs_p_worst_sum)
     fss_p = 1 - fbs_p_sum / fbs_p_worst_sum
@@ -115,6 +128,21 @@ def load_nn_pred(dt_str, leadtime, model_n, ts, ens_n):
         nn_cube1 = nn_cubes[0] #* 2
         # Get index for leadtime and extract data
         nn_cube = nn_cube1[int(leadtime / ts)]
+    else:
+        skip = True
+
+    return nn_cube, skip
+
+def load_nn_pred_det(dt_str, leadtime, model_n, ts):
+    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}_v0/plots_nn_T{}_model{}.nc'.format(model_n, dt_str, model_n)
+    if os.path.exists(nn_f):
+        skip = False
+        # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
+        cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
+        nn_cubes = list(cube_gen)
+        nn_cube1 = nn_cubes[0] #* 2
+        # Get index for leadtime and extract data
+        nn_cube = nn_cube1[int(leadtime / ts + 2)]
     else:
         skip = True
 
