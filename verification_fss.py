@@ -9,25 +9,27 @@ import iris.plot as iplt
 import nimrod_to_cubes as n2c
 
 
-def main():
+def main(leadtime):
 
     count = 0
 
-    model_n = '624800' #1734435' #624800' #842306' #625308' #624800' #'131219'
+    model_n = '624800' #1755653' #624800' #1734435' #624800' #842306' #625308' #624800' #'131219'
+    ts = 5 #5 #30 #model timestep separation
     # Choose variables
     thrshld = 4 # rain rate threshold (mm/hr)
-    neighbourhood = 36 #25   # neighbourhood size (e.g. 9 = 3x3)
-    leadtime = 30 #30 # forecast lead time
+    neighbourhood = 9 #25   # neighbourhood size (e.g. 9 = 3x3)
+    #leadtime = 30 # forecast lead time
     domain = [160, 288, 130, 258] # england (training data domain)
-    ts = 5 #5 #30 #model timestep separation
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     radar_dir = '/data/cr1/cbarth/phd/SVG/verification_data/radar/'
-    files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in [1, 5, 9]\
-             for dd in range(2, 30) for h in range(24) for mi in range(0, 60, 15)] #[0]]
+    files = [f'{radar_dir}201905{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK'\
+             for dd in range(2, 30) for h in range(24) for mi in range(0, 60, 15)] #10, 70, 15)] #[0]]
+    #files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in [1, 5, 9]\
+    #         for dd in range(2, 30) for h in range(24) for mi in range(0, 60, 15)] #[0]]
 
     fbs_nn_sum = 0
     fbs_nn_worst_sum = 0
@@ -42,14 +44,14 @@ def main():
 
         # Load radar data
         r_cube = load_radar(dt, sample_points, leadtime, domain, ts)
+        #print(r_cube)
         # Check if enough rain to be worth verifying
-        if np.mean(r_cube.data) > 0: #0.1:
-            print(dt)
+        if np.mean(r_cube.data) > 0.5: #0.1:
+            #print(dt)
             nn_cube, skip = load_nn_pred(dt_str, leadtime, model_n, ts)
-            #on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
-            p_cube = load_persistence(dt, sample_points, leadtime, domain)
-            #pdb.set_trace()
-            if ((skip == False)): # & (skip0 == False)):
+            on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
+            p_cube = load_persistence(dt, sample_points, ts, domain)
+            if ((skip == False) & (skip0 == False)):
                 count += 1
                 #quickplot(nn_cube, r_cube)
 
@@ -58,8 +60,8 @@ def main():
                                                  threshold=thrshld)
                 nn_fraction = generate_fractions(nn_cube, n_size=neighbourhood,
                                                  threshold=thrshld)
-                #on_fraction = generate_fractions(on_cube, n_size=neighbourhood,
-                #                                threshold=thrshld)
+                on_fraction = generate_fractions(on_cube, n_size=neighbourhood,
+                                                threshold=thrshld)
                 p_fraction = generate_fractions(p_cube, n_size=neighbourhood,
                                                 threshold=thrshld)
 
@@ -68,43 +70,50 @@ def main():
                 fbs_nn_sum += fbs
                 fbs_nn_worst_sum += fbs_worst
                 # Calculate FBS and FBSworst for ON
-                #fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_fraction)
-                #fbs_on_sum += fbs_on
-                #fbs_on_worst_sum += fbs_worst_on
+                fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_fraction)
+                fbs_on_sum += fbs_on
+                fbs_on_worst_sum += fbs_worst_on
                 # Calculate FBS and FBSworst for persistence
                 fbs_p, fbs_worst_p = calculate_fbs(ob_fraction, p_fraction)
                 fbs_p_sum += fbs_p
                 fbs_p_worst_sum += fbs_worst_p
-
+    # for outputs
+    print('model = ', model_n)
+    print('count = ', count)
+    print('threshold = ', thrshld)
+    print('timestep = ', ts)
+    print ('nhood = ', neighbourhood)
     # Calculate FSS for NN (following method in Roberts (2008))
-    print(fbs_nn_sum, fbs_nn_worst_sum)
+    #print(fbs_nn_sum, fbs_nn_worst_sum)
     fss_nn = 1 - fbs_nn_sum / fbs_nn_worst_sum
+    print('====================================')
     print('FSS for NN at t+{} = {}'.format(leadtime, fss_nn))
 
     # Calculate FSS for ON
     #print(fbs_on_sum, fbs_on_worst_sum)
-    #fss_on = 1 - fbs_on_sum / fbs_on_worst_sum
-    #print('FSS for ON at t+{} = {}'.format(leadtime, fss_on))
+    fss_on = 1 - fbs_on_sum / fbs_on_worst_sum
+    print('FSS for ON at t+{} = {}'.format(leadtime, fss_on))
 
     # Calculate FSS for persistence
-    print(fbs_p_sum, fbs_p_worst_sum)
+    #print(fbs_p_sum, fbs_p_worst_sum)
     fss_p = 1 - fbs_p_sum / fbs_p_worst_sum
     print('FSS for persistence at t+{} = {}'.format(leadtime, fss_p))
-    print('model = ', model_n)
-    print('count = ', count)
+    print('====================================')
 
 def load_nn_pred(dt_str, leadtime, model_n, ts):
-    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}/plots_nn_T{}_model{}.nc'.format(model_n, dt_str, model_n)
+    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}_v0/plots_nn_T{}_model{}.nc'.format(model_n, dt_str, model_n)
     if os.path.exists(nn_f):
         skip = False
         # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
         cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
         nn_cubes = list(cube_gen)
-        nn_cube1 = nn_cubes[0]
+        nn_cube1 = nn_cubes[0] #* 2
         # Get index for leadtime and extract data
         nn_cube = nn_cube1[int(leadtime / ts + 2)]
     else:
         skip = True
+        print('no file exists: ', nn_f)
+        nn_cube = False
 
     return nn_cube, skip
 
@@ -219,4 +228,8 @@ def quickplot(nn_cube, r_cube):
     iplt.show()
 
 if __name__ == "__main__":
-    main()
+    import sys; sys.path.append('/home/h03/jcheung/python/lib')
+    import toolbox as tb
+    leadtimes = range(0, 75, 15)
+    tb.parallelise(main)(leadtimes)
+    #main()
