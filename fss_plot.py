@@ -3,8 +3,38 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pdb
 
-timestep = range(0, 60, 5)
-on_timestep = range(0, 60, 15)
+#timestep = range(0, 60, 5)
+timestep = range(0, 75, 15)
+
+p_25_1_0p1 = [1, 0.87, 0.73, 0.61, 0.52] #t+30 and T+60 need updating
+enn_25_1_0p1 = [1, 0.85, 0.74, 0.66, 0.6]#t+30 and T+60 need updating
+on_25_1_0p1 = [1, 0.92, 0.86, 0.78, 0.73]#t+30 and T+60 need updating
+
+p_25_4_0p1 = [1, 0.76, 0.5, 0.39, 0.30]#t+30 needs updating
+enn_25_4_0p1 = [1, 0.66, 0.51, 0.38, 0.31]#t+30 needs updating
+on_25_4_0p1 = [1, 0.83, 0.7, 0.6, 0.52]#t+30 needs updating
+## Plot timeseries
+plt.plot(timestep, p_25_4_0p1, color='orange', linestyle='-.', label='Persistence')
+#plt.plot(timestep, p_36_4, color='orange', linestyle='--', label='Per n=36')
+#plt.plot(timestep, p_81_4, color='orange', linestyle='-', label='Per n=81')
+plt.plot(timestep, enn_25_4_0p1, color='blue', linestyle='-.', label='Ensemble NN')
+#plt.plot(timestep, enn_36_4, color='blue', linestyle='--', label='Ens n=36')
+#plt.plot(timestep, enn_81_4, color='blue', linestyle='-', label='Ens n=81')
+plt.plot(timestep, on_25_4_0p1, color='green', linestyle='-.', label='Op nowcast')
+#plt.plot(timestep, nn_36_4, color='green', linestyle='--', label='Det n=36')
+#plt.plot(timestep, nn_81_4, color='green', linestyle='-', label='Det n=81')
+#plt.plot(on_timestep, on_9_4, color='red', linestyle='-.', label='Op n=9')
+#plt.plot(on_timestep, on_81_4, color='red', linestyle='-', label='Op n=81')
+
+plt.xlabel('Time (minutes)')
+plt.ylabel('FSS')
+plt.title('4 mm/hr threshold') #, 9x9 neighbourhood')
+plt.legend(fontsize=10, ncol=3)
+plt.show()
+plt.close()
+
+pdb.set_trace()
+
 
 p_81_1 = [1, 0.98, 0.97, 0.94, 0.93, 0.90, 0.87, 0.84, 0.82, 0.80, 0.78, 0.76]
 nn_81_1 = [1, 0.95, 0.93, 0.91, 0.88, 0.86, 0.84, 0.82, 0.80, 0.78, 0.77, 0.75, 0.73]
@@ -29,29 +59,6 @@ p_9_4 = [1, 0.83, 0.66, 0.53, 0.45, 0.37, 0.32, 0.28, 0.24, 0.20, 0.18, 0.15]
 enn_9_4 = [1, 0.81, 0.71, 0.61, 0.57, 0.53, 0.47, 0.46, 0.44, 0.40, 0.38, 0.37]
 nn_9_4 = [1, 0.81, 0.69, 0.64, 0.56, 0.49, 0.46, 0.43, 0.39, 0.37, 0.36, 0.33]
 on_9_4 = [1, 0.48, 0.38, 0.33] # 15 min timesteps
-
-## Plot timeseries
-plt.plot(timestep, p_9_1, color='orange', linestyle='-.', label='Per n=9')
-#plt.plot(timestep, p_36_4, color='orange', linestyle='--', label='Per n=36')
-#plt.plot(timestep, p_81_4, color='orange', linestyle='-', label='Per n=81')
-plt.plot(timestep, enn_9_1, color='blue', linestyle='-.', label='Ens n=9')
-#plt.plot(timestep, enn_36_4, color='blue', linestyle='--', label='Ens n=36')
-#plt.plot(timestep, enn_81_4, color='blue', linestyle='-', label='Ens n=81')
-plt.plot(timestep, nn_9_1, color='green', linestyle='-.', label='Det n=9')
-#plt.plot(timestep, nn_36_4, color='green', linestyle='--', label='Det n=36')
-#plt.plot(timestep, nn_81_4, color='green', linestyle='-', label='Det n=81')
-#plt.plot(on_timestep, on_9_4, color='red', linestyle='-.', label='Op n=9')
-#plt.plot(on_timestep, on_81_4, color='red', linestyle='-', label='Op n=81')
-
-plt.xlabel('Time (minutes)')
-plt.ylabel('FSS')
-plt.title('1 mm/hr threshold') #, 9x9 neighbourhood')
-plt.legend(fontsize=10, ncol=2)
-plt.show()
-plt.close()
-
-
-
 #
 # timestep = [15, 30, 45, 60]
 # on_new_4 = [0.84, 0.72, 0.63, 0.55]
