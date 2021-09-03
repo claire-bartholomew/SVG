@@ -297,30 +297,17 @@ if __name__ == "__main__":
     df = pd.DataFrame([[0,0,0,0,0,0,0,0,0,0]], columns=['model', 'count',
                       'threshold', 'mean_thrshold', 'timestep', 'neighbourhood',
                       'fss_nn', 'fss_enn', 'fss_on', 'fss_p'])
-    for mean_rain in [0.1, 0.5]: #, 0.3, 0.5]:
-        for threshold in [1, 4, 10]: #1, 4, 10]:
-            for neighbourhood in [9, 25]: #, 25, 49, 81]: #25 #9 #9 #36 #81 #36 #25   # neighbourhood size (e.g. 9 = 3x3)
-                for leadtime in [15, 30, 45, 60]: #, 45, 60]: #, 30, 45, 60]:
+    for mean_rain in [0.1, 0.5]:
+        for threshold in [1, 4, 10]:
+            for neighbourhood in [9, 25]:  # neighbourhood size (e.g. 9 = 3x3)
+                for leadtime in [15, 30, 45, 60]:
                     df = main(df, leadtime, threshold, neighbourhood, mean_rain)
+    #mean_rain = 0.1
+    #threshold = 4 #1, 4, 10]:
+    #neighbourhood = 25 #9, 25]:  # neighbourhood size (e.g. 9 = 3x3)
+    #leadtime = 60 #15, 30, 45, 60]:
+    #df = main(df, leadtime, threshold, neighbourhood, mean_rain)
+    #df.to_csv('short_fss_df_{}.csv'.format(leadtime))
 
     df.to_csv('fss_df.csv')
-    pdb.set_trace()
-
-    # model_n = '624800' #1755653' #624800' #1734435' #624800' #842306' #625308' #624800' #'131219'
-    # ts = 5 #5 #30 #model timestep separation
-    # # Choose variables
-    # #thrshld = 8 #2 #1 #4 #0.5  #1 # rain rate threshold (mm/hr)
-    # #neighbourhood = 81 #9 #36 #81 #36 #25   # neighbourhood size (e.g. 9 = 3x3)
-    # #leadtime = 30 # forecast lead time
-    # for thrshld in [1, 2, 4, 8]:
-    #     for neighbourhood in [9, 36, 81]:
-    #         print('model = ', model_n)
-    #         print('threshold = ', thrshld)
-    #         print('timestep = ', ts)
-    #         print ('nhood = ', neighbourhood)
-    #         print('leadtime, count, fss_p, fss_nn, fss_e_nn')
-    #         print('====================================')
-    #         for leadtime in leadtimes:
-    #             main(leadtime, model_n, thrshld, ts, neighbourhood)
-    #
-    #         #tb.parallelise(main)(leadtimes)
+    #pdb.set_trace()
