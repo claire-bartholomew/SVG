@@ -17,25 +17,30 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
 
     #---------------------------- OPTIONS --------------------------------#
     # Load all dates in op_nowcast data
-    files = [f'/data/cr1/cbarth/phd/SVG/verification_data/radar/2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mi in range(0, 60, 15)\
-             for h in range(24) for dd in range(1, 32) for mo in [month]] #range(10, 11)]
+    # op_nowcast
+    #files = [f'/data/cr1/cbarth/phd/SVG/verification_data/radar/2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mi in range(0, 60, 15)\
+    #         for h in range(24) for dd in range(1, 32) for mo in month] #range(10, 11)]
+    files = [f'/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/2019{mo:02}{dd:02}{h:02}{mi:02}_u1096_ng_pp_precip_2km' for mi in range(0, 60, 15)\
+             for h in range(24) for dd in range(1, 32) for mo in month]
     ## Select model number for running verification
     #model_n = '665443' #' #625308' #624800' #'131219'
     ## Choose variables
     #thrshld = 1 # rain rate threshold (mm/hr)
     #neighbourhood = 25 #25   # neighbourhood size (e.g. 9 = 3x3)
-    #timesteps = [[15], [30], [45], [60]] #[30] #[15],
+    #timesteps = [15] #[[15], [30], [45], [60]] #[30] #[15],
     data_split = 'test' #train'
     domain = [160, 288, 130, 258] # england (training data domain)
     r_domain = [185, 263, 155, 233] #reduced domain to avoid border effects
     #---------------------------------------------------------------------#
     nn_fss = []
     p_fss = []
+    on_fss = []
 
     #print('model = {}'.format(model_n))
     print('threshold = {}'.format(thrshld))
     print('neighbourhood = {}'.format(neighbourhood))
     print('month = {}'.format(month))
+    print('timestep = {}'.format(timesteps))
 
     files_exist = []
     for file in files:
@@ -65,7 +70,8 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
         fbs_worst_p_list = []
 
         for file in files_exist:
-            dt = datetime.strptime(file, '/data/cr1/cbarth/phd/SVG/verification_data/radar/%Y%m%d%H%M_nimrod_ng_radar_rainrate_composite_1km_UK')
+            #dt = datetime.strptime(file, '/data/cr1/cbarth/phd/SVG/verification_data/radar/%Y%m%d%H%M_nimrod_ng_radar_rainrate_composite_1km_UK')
+            dt = datetime.strptime(file, '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/%Y%m%d%H%M_u1096_ng_pp_precip_2km')
             dt_str = dt.strftime('%Y%m%d%H%M')
             if dt > datetime.strptime('20190102', '%Y%m%d'): #to avoid first hour so persistence forecast works
 
@@ -73,7 +79,7 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
                 # Neural network output
                 nn_cubelist, skip0 = load_nn_pred(dt_str, timesteps, model_n, r_domain)
                 # Operational nowcast output
-                #n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps[i], r_domain)
+                n_cubelist, skip = load_nowcast(dt_str, sample_points, timesteps, r_domain)
 
                 persist_dt = dt - timedelta(minutes=flt)
                 persist_dt_str = persist_dt.strftime('%Y%m%d%H%M')
@@ -84,12 +90,8 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
                     count_files += 1
                     r_cubelist = load_radar(dt, dt_str, sample_points,
                                             timesteps, data_split, r_domain)
-                    #print(file)
                     # Persistence forecast
                     p_cubelist = []
-                    #persist_dt = dt - timedelta(minutes=flt)
-                    #persist_dt_str = persist_dt.strftime('%Y%m%d%H%M')
-                    #persist_radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(persist_dt_str)
                     p_radar = iris.load(persist_radar_f)
                     p_cube = p_radar[0].interpolate(sample_points, iris.analysis.Linear())
                     persist_cube = p_cube[r_domain[0]:r_domain[1], r_domain[2]:r_domain[3]] / 32
@@ -100,8 +102,8 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
                                         n_size=neighbourhood, threshold=thrshld)
                     nn_nc_fraction = generate_fractions(nn_cubelist[0],
                                         n_size=neighbourhood, threshold=thrshld)
-                    #on_nc_fraction = generate_fractions(n_cubelist[0],
-                    #                    n_size=neighbourhood, threshold=thrshld)
+                    on_nc_fraction = generate_fractions(n_cubelist[0],
+                                        n_size=neighbourhood, threshold=thrshld)
                     p_fraction = generate_fractions(p_cubelist[0],
                                         n_size=neighbourhood, threshold=thrshld)
 
@@ -109,9 +111,9 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
                     fbs, fbs_worst = calculate_fbs(ob_fraction, nn_nc_fraction)
                     fbs_nn_sum += fbs
                     fbs_nn_worst_sum += fbs_worst
-                    #fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_nc_fraction)
-                    #fbs_on_sum += fbs_on
-                    #fbs_on_worst_sum += fbs_worst_on
+                    fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_nc_fraction)
+                    fbs_on_sum += fbs_on
+                    fbs_on_worst_sum += fbs_worst_on
                     fbs_p, fbs_worst_p = calculate_fbs(ob_fraction, p_fraction)
                     fbs_p_sum += fbs_p
                     fbs_p_worst_sum += fbs_worst_p
@@ -119,15 +121,15 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
                     # Calculate all data values for generating PDFs
                     all_radar.append(r_cubelist[i].data)
                     all_nn.append(nn_cubelist[i].data)
-                    #all_on.append(n_cubelist[i].data)
+                    all_on.append(n_cubelist[i].data)
                     all_p.append(p_cubelist[i].data)
 
                     # Add to pandas dataframe entries
                     datelist.append(dt_str)
                     fbs_list.append(fbs)
                     fbs_worst_list.append(fbs_worst)
-                    #fbs_on_list.append(fbs_on)
-                    #fbs_worst_on_list.append(fbs_worst_on)
+                    fbs_on_list.append(fbs_on)
+                    fbs_worst_on_list.append(fbs_worst_on)
                     fbs_p_list.append(fbs_p)
                     fbs_worst_p_list.append(fbs_worst_p)
 
@@ -136,8 +138,9 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
         fss_nn = 1 - fbs_nn_sum /fbs_nn_worst_sum
         print('FSS for NN at t+{} = {}'.format(flt, fss_nn))
         nn_fss.append(fss_nn)
-        #fss_on = 1 - fbs_on_sum /fbs_on_worst_sum
-        #print('FSS for Op Ncst at t+{} = {}'.format(flt[0], fss_on))
+        fss_on = 1 - fbs_on_sum /fbs_on_worst_sum
+        print('FSS for Op Ncst at t+{} = {}'.format(flt, fss_on))
+        on_fss.append(fss_on)
         fss_p = 1 - fbs_p_sum /fbs_p_worst_sum
         print('FSS for persistence at t+{} = {}'.format(flt, fss_p))
         p_fss.append(fss_p)
@@ -153,21 +156,21 @@ def main(model_n, thrshld, neighbourhood, month, timesteps):
         fbs_scores = pd.DataFrame({'datetime': datelist,
                                'nn_fbs': fbs_list,
                                'nn_fbs_worst': fbs_worst_list,
-                               #'on_fbs': fbs_on_list,
-                               #'on_fbs_worst': fbs_worst_on_list,
+                               'on_fbs': fbs_on_list,
+                               'on_fbs_worst': fbs_worst_on_list,
                                'p_fbs': fbs_p_list,
                                'p_fbs_worst': fbs_worst_p_list})
         fbs_scores['nn_fss'] = 1 - fbs_scores['nn_fbs'] / fbs_scores['nn_fbs_worst']
-        #fbs_scores['on_fss'] = 1 - fbs_scores['on_fbs'] / fbs_scores['on_fbs_worst']
+        fbs_scores['on_fss'] = 1 - fbs_scores['on_fbs'] / fbs_scores['on_fbs_worst']
         fbs_scores['p_fss'] = 1 - fbs_scores['p_fbs'] / fbs_scores['p_fbs_worst']
         #Sort data by FSS (from NN)
         fbs_scores = fbs_scores.sort_values(by ='nn_fss')
-        #print('Top 5 dates: ', fbs_scores['datetime'][-5:])
-        #print('Bottom 5 dates: ', fbs_scores['datetime'][0:5])
-        #print('========================================================')
-        fbs_scores.to_csv('fss_df_mon{}_t{}_{}mmhr_n{}.csv'.format(month, flt, thrshld, neighbourhood), index=False)
+        print('Top 5 dates: ', fbs_scores['datetime'][-5:])
+        print('Bottom 5 dates: ', fbs_scores['datetime'][0:5])
+        print('========================================================')
+        fbs_scores.to_csv('fss_df_t{}_{}mmhr_n{}_m{}.csv'.format(flt, thrshld, neighbourhood, model_n), index=False)
 
-    return(nn_fss, p_fss)
+    return(nn_fss, p_fss, on_fss)
 
 
 def generate_err_map(all_radar, all_nn, all_on, cube):
@@ -349,9 +352,10 @@ def load_radar(dt, dt_str, sample_points, timesteps, data_split, domain):
 
 if __name__ == "__main__":
     # Select model number for running verification
-    model_n = '624800' #' #625308' #624800' #'131219'
+    model_n = '624800' #842306' #625308' #624800' #'131219'
     # Choose variables
-    thrshld = 1 # rain rate threshold (mm/hr)
-    neighbourhood = 25 #25   # neighbourhood size (e.g. 9 = 3x3)
-    month = 12
-    main(model_n, thrshld, neighbourhood, month)
+    thrshld = 4 # rain rate threshold (mm/hr)
+    neighbourhood = 36 #25   # neighbourhood size (e.g. 9 = 3x3)
+    month = [1,5,9]
+    timesteps = [30]
+    main(model_n, thrshld, neighbourhood, month, timesteps)

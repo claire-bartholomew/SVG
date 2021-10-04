@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201909291300' #201907110845' #201909291300' #201909191200' #201908141730' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
+    dt_str = '201911271500' #201907110845' #201909291300' #201909191200' #201908141730' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model624800.pth' #778930.pth' #625308.pth' #624800.pth' #723607.pth' #712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    model = 'model131219.pth' #624800.pth' #778930.pth' #625308.pth' #624800.pth' #723607.pth' #712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
     #domain = [288, 416, 100, 228] #scotland
     domain = [160, 288, 130, 258] # england (training data domain)
     r_domain = [185, 263, 155, 233] #reduced domain to avoid border effects
@@ -27,8 +27,8 @@ def main():
     if prior == 'fp':
         import run_svg_fp as run_svg
     else:
-        import run_svg_lp_testing as run_svg
-        #import run_svg_lp as run_svg
+        #import run_svg_lp_testing as run_svg
+        import run_svg_lp as run_svg
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),

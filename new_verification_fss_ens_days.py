@@ -27,8 +27,8 @@ def main(df, leadtime, thrshld, neighbourhood, mean_rain): #, model_n, thrshld, 
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     radar_dir = '/data/cr1/cbarth/phd/SVG/verification_data/radar/'
-    files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in range(6, 7)\
-             for dd in range(2, 29) for h in range(24) for mi in range(0, 60, 15)] #[0]]
+    files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in range(1, 13)\
+             for dd in range(2, 29) for h in range(24) for mi in range(0, 60, 15)] #[0]] #2, 29
     #files = [f'{radar_dir}201905{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK'\
     #         for dd in range(2, 30) for h in range(24) for mi in range(10, 70, 15)] #[0]]
 
@@ -59,14 +59,13 @@ def main(df, leadtime, thrshld, neighbourhood, mean_rain): #, model_n, thrshld, 
         if r_cube != 0:
             # Check if enough rain to be worth verifying
             if np.mean(r_cube.data) > mean_rain:
-                print(dt)
                 #print(r_cube)
                 nn_cube, skip = load_nn_pred_det(dt, leadtime, model_n, ts)
                 on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
                 p_cube = load_persistence(dt, sample_points, ts, domain)
                 #pdb.set_trace()
                 if ((skip == False) & (skip0 == False)):
-                    #print(dt)
+                    print(dt)
                     count += 1
                     #quickplot(nn_cube, r_cube)
 
@@ -316,9 +315,9 @@ if __name__ == "__main__":
     #leadtimes = range(0, 75, 15)
     #tb.parallelise(main)(leadtimes)
 
-    df = pd.DataFrame([[0,0,0,0,0,0,0,0,0,0,0]], columns=['datetime', 'model', 'count',
-                      'threshold', 'mean_thrshold', 'timestep', 'neighbourhood',
-                      'fss_nn', 'fss_enn', 'fss_on', 'fss_p'])
+    #df = pd.DataFrame([[0,0,0,0,0,0,0,0,0,0,0]], columns=['datetime', 'model', 'count',
+    #                  'threshold', 'mean_thrshold', 'timestep', 'neighbourhood',
+    #                  'fss_nn', 'fss_enn', 'fss_on', 'fss_p'])
     #for mean_rain in [0.1, 0.5]:
     #    for threshold in [1, 4, 10]:
     #        for neighbourhood in [9, 25]:  # neighbourhood size (e.g. 9 = 3x3)
@@ -327,10 +326,13 @@ if __name__ == "__main__":
     #df.to_csv('fss_df.csv')
 
     mean_rain = 0.1
-    threshold = 4 #1, 4, 10]:
+    threshold = 1 #1, 4, 10]:
     neighbourhood = 25 #9, 25]:  # neighbourhood size (e.g. 9 = 3x3)
-    leadtime = 60 #15, 30, 45, 60]:
-    df = main(df, leadtime, threshold, neighbourhood, mean_rain)
-    df.to_csv('short_fss_df_{}.csv'.format(leadtime))
+    for leadtime in [15, 30, 45, 60]:
+        df = pd.DataFrame([[0,0,0,0,0,0,0,0,0,0,0]], columns=['datetime', 'model', 'count',
+                      'threshold', 'mean_thrshold', 'timestep', 'neighbourhood',
+                      'fss_nn', 'fss_enn', 'fss_on', 'fss_p'])
+        df = main(df, leadtime, threshold, neighbourhood, mean_rain)
+        df.to_csv('dates_fss_df_{}.csv'.format(leadtime))
 
     #pdb.set_trace()

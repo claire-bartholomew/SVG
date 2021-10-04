@@ -26,8 +26,8 @@ def main(leadtime): #, model_n, thrshld, ts, neighbourhood):
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     radar_dir = '/data/cr1/cbarth/phd/SVG/verification_data/radar/'
-    files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in [1, 5, 9]\
-             for dd in range(2, 30) for h in range(24) for mi in range(0, 60, 15)] #[0]]
+    files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in range(1, 13)\
+             for dd in range(2, 29) for h in range(24) for mi in range(0, 60, 15)] #[0]]
     #files = [f'{radar_dir}201905{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK'\
     #         for dd in range(2, 30) for h in range(24) for mi in range(10, 70, 15)] #[0]]
 
@@ -47,8 +47,8 @@ def main(leadtime): #, model_n, thrshld, ts, neighbourhood):
         r_cube = load_radar(dt, sample_points, leadtime, domain, ts)
         #print(r_cube)
         # Check if enough rain to be worth verifying
-        if np.mean(r_cube.data) > 0.5: #0 #0.1
-            #print(dt)
+        if np.mean(r_cube.data) > 0.5: #0.1: #0
+            print(dt)
             nn_cube, skip = load_nn_pred_det(dt, leadtime, model_n, ts)
             #on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
             p_cube = load_persistence(dt, sample_points, ts, domain)
@@ -122,7 +122,7 @@ def main(leadtime): #, model_n, thrshld, ts, neighbourhood):
     print(leadtime, count, fss_p, fss_nn, fss_e_nn)
 
 def load_nn_pred(dt_str, leadtime, model_n, ts, ens_n):
-    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}_ens1/plots_nn_T{}_model{}_ens{}.nc'.format(model_n, dt_str, model_n, ens_n)
+    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}_ens2/plots_nn_T{}_model{}_ens{}.nc'.format(model_n, dt_str, model_n, ens_n)
     if os.path.exists(nn_f):
         skip = False
         # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
@@ -148,7 +148,7 @@ def load_nn_pred_det(dt, leadtime, model_n, ts):
         nn_cubes = list(cube_gen)
         nn_cube1 = nn_cubes[0] #* 2
         # Get index for leadtime and extract data
-        nn_cube = nn_cube1[int(leadtime / ts + 2)]
+        nn_cube = nn_cube1[int(leadtime / ts)]# + 2)]
     else:
         skip = True
         #print('no file exists: ', nn_f)

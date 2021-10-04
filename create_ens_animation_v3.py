@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201908121200' #1100' #201908141630' #201909291300' #201908141630' #201909291300'
+    dt_str = '201908180100' #201907171900' #201908180100   #201910210200' #201912081600' #201909060000' #08121200' #1100' #201908141630' #201909291300' #201908141630' #201909291300'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
     model = 'model624800.pth'
@@ -67,7 +67,7 @@ def animate(r_cubelist, ens_cubes, dt_str, prior):
     fig = plt.figure(figsize=(17, 8))
 
     # Set video filename
-    filename = "animations/{}_ens2_radar_animation_{}.mp4".format(prior, dt_str)
+    filename = "animations/{}_ens_radar_animation_{}.mp4".format(prior, dt_str)
 
     # Create plot frames
     with writer.saving(fig, filename, 300):
@@ -75,10 +75,10 @@ def animate(r_cubelist, ens_cubes, dt_str, prior):
             print('time = ', (t+1)*5)
             for n, ens in enumerate(ens_cubes):
                 ax = fig.add_subplot(4, 8, n+1)
-                cf = subplot(ens[0][t+1][0:74, 54:128], '', levels, colors)
+                cf = subplot(ens[0][t+1], '', levels, colors)
             ax = fig.add_subplot(4, 8, 32)
-            cf = subplot(r_cubelist[t][0:74, 54:128], 'Radar', levels, colors)
-
+            cf = subplot(r_cubelist[t], 'Radar', levels, colors)
+            #cf = subplot(r_cubelist[t][0:74, 54:128], 'Radar', levels, colors)
             # Add axes to the figure, to place the colour bar [left, bottom, width, height] (of cbar)
             colorbar_axes = fig.add_axes([0.33, 0.08, 0.33, 0.02])
             # Add the colour bar
@@ -136,31 +136,39 @@ def prob_animate(r_cubelist, ens_cubes, dt_str, prior):
             prob_cube.data = masked_arr
 
             ax = fig.add_subplot(1, 2, 1)
-            #Mask radar data below threshold
-            r_data = r_cubelist[t].data
-            r_data[np.where(r_data<threshold)] = 0
-            r_data[np.where(r_data>=threshold)] = 1
-            r_cubelist[t].data = r_data
+            ##Mask radar data below threshold
+            #r_data = r_cubelist[t].data
+            #r_data[np.where(r_data<threshold)] = 0
+            #r_data[np.where(r_data>=threshold)] = 1
+            #r_cubelist[t].data = r_data
             # Plot radar data
-            cf = iplt.contourf(r_cubelist[t][0:64, 64:128] , levels=[0, 0.5, 1], colors=['black', 'yellow']) #, origin='lower', extend='max')
-            #cf.cmap.set_over('white')
-            plt.gca().coastlines('50m', color='white')
-            plt.title('Radar rain rate > {} mm/hr'.format(threshold), fontsize=14)
-            cbar = plt.colorbar(cf, orientation='horizontal')
-            cbar.ax.set_xlabel('Rain > {} mm/hr'.format(threshold), fontsize=14) #rate (mm/hr)')
-
+            #cf = iplt.contourf(r_cubelist[t], levels=[0, 0.5, 1], colors=['black', 'yellow']) #, origin='lower', extend='max')
+            ##cf.cmap.set_over('white')
+            #plt.gca().coastlines('50m', color='white')
+            #plt.title('Radar rain rate > {} mm/hr'.format(threshold), fontsize=14)
+            #cbar = plt.colorbar(cf, orientation='horizontal')
+            #cbar.ax.set_xlabel('Rain > {} mm/hr'.format(threshold), fontsize=14) #rate (mm/hr)')
+            cf = subplot(r_cubelist[t], 'Radar', levels, colors)
+            colorbar_axes = fig.add_axes([0.33, 0.08, 0.33, 0.02])
+            # Add the colour bar
+            cbar = plt.colorbar(cf, colorbar_axes, orientation='horizontal')
+            cbar.ax.set_xlabel('Rain rate (mm/hr)', fontsize=10)
+            #fig.tight_layout()
+            fig.suptitle('T+{:02d} min'.format((t+1)*5), fontsize=16)
             ##Plot probability data
-            levels2 = [0, 0.2, 0.4, 0.6, 0.8, 1.]
-            ax = fig.add_subplot(1, 2, 2)
-            cf = iplt.contourf(prob_cube[0:64, 64:128], levels=levels2) #, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
-            cf.cmap.set_over('white')
-            plt.gca().coastlines('50m', color='white')
-            plt.title('NN probability > {} mm/hr'.format(threshold), fontsize=14)
-            cbar = plt.colorbar(cf, orientation='horizontal')
-            cbar.ax.set_xlabel('%')
+            #levels2 = [0, 0.2, 0.4, 0.6, 0.8, 1.]
+            #ax = fig.add_subplot(1, 2, 2)
+            #cf = iplt.contourf(prob_cube[0:64, 64:128], levels=levels2) #, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
+            #cf.cmap.set_over('white')
+            #plt.gca().coastlines('50m', color='white')
+            #plt.title('NN probability > {} mm/hr'.format(threshold), fontsize=14)
+            #cbar = plt.colorbar(cf, orientation='horizontal')
+            #cbar.ax.set_xlabel('%')
 
-            ##Plot mean/max data
-            #ax = fig.add_subplot(1, 3, 2)
+            #Plot mean/max data
+            ax = fig.add_subplot(1, 2, 2)
+            cf = subplot(mean_cube, 'Mean', levels, colors)
+
             #cf = qplt.contourf(mean_cube, levels, colors=colors, origin='lower', extend='max')
             #cf.cmap.set_over('white')
             #plt.gca().coastlines('50m', color='white')
