@@ -166,6 +166,8 @@ def prep_data(files, n_eval, domain, threshold):
     # only keep filenames where the right number of  consecutive files exist at 5 min intervals
     sorted_files = list(sorted_files1[0:0+n_eval]) #chunks(sorted_files1, n_eval))
 
+    pdb.set_trace()
+
     dataset = []
     fn = sorted_files
     for i_f, ffile in enumerate(fn):

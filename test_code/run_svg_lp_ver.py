@@ -48,8 +48,8 @@ dtype = torch.FloatTensor
 def main(startdate, model_path, model, domain, threshold):
 
     print('Model = ', model_path, model)
-    startdate = datetime.strptime('201912171645', '%Y%m%d%H%M') # for running inference for verification
-    enddate = datetime.strptime('201912172000', '%Y%m%d%H%M') # for running inference for verification
+    startdate = datetime.strptime('201901010000', '%Y%m%d%H%M') # for running inference for verification
+    enddate = datetime.strptime('201902010000', '%Y%m%d%H%M') # for running inference for verification
     dtime = startdate
 
     frame_predictor, posterior, prior, encoder, decoder, last_frame_skip = load_model(model_path, model)
@@ -300,9 +300,9 @@ def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last
     return(ssim, x, posterior_gen, all_gen)
 
 if __name__ == "__main__":
-    startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
+    #startdate = datetime.strptime('201909291200', '%Y%m%d%H%M')
     model_path = '/scratch/cbarth/phd/'
-    model = 'model624800.pth' #131219.pth'
+    model = 'model131219.pth' #624800.pth' #131219.pth'
     domain = [160, 288, 130, 258]
-    threshold = 64.
-    main(startdate, model_path, model, domain, threshold)
+    threshold = 32. #64.
+    main(model_path, model, domain, threshold) #startdate

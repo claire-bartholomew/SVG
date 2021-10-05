@@ -179,6 +179,7 @@ def prep_data(files, filedir):
 
     timeformat = "%Y%m%d%H%M"
     if filedir == 'train':
+        #regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/(\d*)")
         regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
     elif filedir == 'test':
         regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
@@ -249,6 +250,9 @@ def prep_data(files, filedir):
 
     # Convert to torch tensors
     tensor = torch.stack([torch.Tensor(i) for i in dataset])
+
+    #print(tensor)
+    #pdb.set_trace()
 
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
