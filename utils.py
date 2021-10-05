@@ -16,7 +16,7 @@ from scipy import signal
 from scipy import ndimage
 from PIL import Image, ImageDraw
 
-from torchvision import datasets, transforms
+#from torchvision import datasets, transforms
 from torch.autograd import Variable
 import imageio
 
