@@ -2,13 +2,15 @@
 #SBATCH --qos=normal
 #SBATCH --mem=20GB
 #SBATCH --ntasks=32
-#SBATCH --output=/data/cr1/cbarth/phd/SVG/inf3.out
+#SBATCH --output=/data/cr1/cbarth/phd/SVG/inf_det12.out
 #SBATCH --time=360
 #SBATCH --mail-user=claire.bartholomew@metoffice.gov.uk
 #SBATCH --mail-type=ALL
-#SBATCH --error=/data/cr1/cbarth/phd/SVG/inf3.err
+#SBATCH --error=/data/cr1/cbarth/phd/SVG/inf_det12.err
 
 #module load scitools
 source /net/home/h06/cbarth/anaconda3/bin/activate /net/home/h06/cbarth/anaconda3/envs/myenv
 
-python /data/cr1/cbarth/phd/SVG/run_svg_lp_ver.py
+python -W ignore /data/cr1/cbarth/phd/SVG/generate_nn_pred.py
+
+#python /data/cr1/cbarth/phd/SVG/run_svg_lp_ver.py
