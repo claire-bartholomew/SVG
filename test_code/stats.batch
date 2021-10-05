@@ -1,0 +1,10 @@
+#!/bin/bash -l
+#SBATCH --qos=normal
+#SBATCH --mem=100000
+#SBATCH --ntasks=2
+#SBATCH --output=stats.out
+#SBATCH --time=180
+#SBATCH --mail-user=claire.bartholomew@metoffice.gov.uk
+#SBATCH --mail-type=ALL
+
+python -W ignore calculate_data_stats.py
