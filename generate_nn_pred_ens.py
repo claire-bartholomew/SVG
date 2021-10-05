@@ -84,74 +84,67 @@ def main(startdate): #, enddate, mod, n_past, n_future, ts=5):
     #startdate = datetime.strptime('201909290000', '%Y%m%d%H%M')
     enddate = datetime.strptime('201910010000', '%Y%m%d%H%M')
     dtime = startdate
-    #print('a')
-    while True:
-        #print('b')
-        dt_check = dtime + timedelta(minutes=n_past*ts) # start cube at final input frame
-        date_check = datetime.strftime(dt_check, '%Y%m%d%H%M')
 
-        #if not os.path.isfile('/data/cr1/cbarth/phd/SVG/model_output/{}/plots_nn_T{}_{}.nc'.format(mod, date_check, mod)):
-        #print('c') #dtime, date_check)
-        date_list = [dtime + timedelta(minutes=x*5) for x in range(36)]
-        #date_list = [dtime + timedelta(minutes=x*30) for x in range(36)]
-        files_v = []
-        for dt in date_list:
-            dt_str = datetime.strftime(dt, '%Y%m%d%H%M')
-            files_v.append('/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
+    #while True:
 
-        list_tst = []
-        for file in files_v:
-            if os.path.isfile(file):
-                list_tst.append(file)
+    dt_check = dtime + timedelta(minutes=n_past*ts) # start cube at final input frame
+    date_check = datetime.strftime(dt_check, '%Y%m%d%H%M')
+    date_list = [dtime + timedelta(minutes=x*5) for x in range(n_eval)] #36)]
+    #date_list = [dtime + timedelta(minutes=x*30) for x in range(36)]
+    files_v = []
+    for dt in date_list:
+        dt_str = datetime.strftime(dt, '%Y%m%d%H%M')
+        files_v.append('/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
 
-        test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, batch_size)
-        if skip == False:
-            #print('d')
-            #print('start datetime:', start_date[0])
-            yyyy = str(start_date[0])[10:14]
-            mm = str(start_date[0])[15:17]
-            dd = str(start_date[0])[18:20]
-            hh = str(start_date[0])[21:23]
-            mi = str(start_date[0])[24:26]
-            dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
-            date = datetime.strptime(dt_str, '%Y%m%d%H%M')
-            date = date + timedelta(minutes=n_past*ts) # start cube at final input frame
-            dt_str = datetime.strftime(date, '%Y%m%d%H%M')
+    list_tst = []
+    for file in files_v:
+        if os.path.isfile(file):
+            list_tst.append(file)
 
-            #print(dtime, date_check)
-            testing_batch_generator = get_testing_batch(test_loader, batch_size, dtype)
+    test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, batch_size)
+    #print('start datetime:', start_date[0])
+    yyyy = str(start_date[0])[10:14]
+    mm = str(start_date[0])[15:17]
+    dd = str(start_date[0])[18:20]
+    hh = str(start_date[0])[21:23]
+    mi = str(start_date[0])[24:26]
+    dt_str0 = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
+    date0 = datetime.strptime(dt_str0, '%Y%m%d%H%M')
+    date = date0 + timedelta(minutes=n_past*ts) # start cube at final input frame
+    dt_str = datetime.strftime(date, '%Y%m%d%H%M')
 
-            # Create cubes of right sizes (and scale for cbar by multiplying by 32)
-            pred_cube = cube[:, 160:288, 130:258]
-            pred_cube *= 32.
-            pred_cube = pred_cube[n_past-1:n_eval]
+    if skip == False:
+        print(dtime, date_check)
+        testing_batch_generator = get_testing_batch(test_loader, batch_size, dtype)
 
-            # generate predictions
-            test_x = next(testing_batch_generator)
-            ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test',
-                     frame_predictor, posterior, n_eval, encoder, decoder,
-                     last_frame_skip, n_past, n_future, nsample, batch_size,
-                     prior)
+        # Create cubes of right sizes (and scale for cbar by multiplying by 32)
+        pred_cube = cube[:, 160:288, 130:258]
+        pred_cube *= 32.
+        pred_cube = pred_cube[n_past-1:n_eval]
 
-            batch_number = 0 #in range(1): #batch_size):
-            # Find index of sample with highest SSIM score
-            #mean_ssim = np.mean(ssim[0], 1)
-            mean_ssim = np.mean(ssim[batch_number], 1)
-            ordered = np.argsort(mean_ssim)
-            sidx = ordered[-1]
-            #rand_sidx = [np.random.randint(nsample) for s in range(3)]
-            for t in range(n_past-1, n_eval): # just save analysis and predictions
-                #print('time = ', t)
-                pred_cube.data[t-n_past+1] = all_gen[sidx][t][batch_number][0].detach().numpy() * 64.
+        # generate predictions
+        test_x = next(testing_batch_generator)
+        ssim, x, posterior_gen, all_gen = make_gifs(test_x, 'test',
+                 frame_predictor, posterior, n_eval, encoder, decoder,
+                 last_frame_skip, n_past, n_future, nsample, batch_size,
+                 prior)
+
+        batch_number = 0 #in range(1): #batch_size):
+        # Find index of sample with highest SSIM score
+        #mean_ssim = np.mean(ssim[0], 1)
+        #mean_ssim = np.mean(ssim[batch_number], 1)
+        #ordered = np.argsort(mean_ssim)
+        #sidx = ordered[-1]
+        #rand_sidx = [np.random.randint(nsample) for s in range(3)]
+        for ensemble in range(30):
+            for t in range(n_past-1, n_eval): # just save predictions
+                pred_cube.data[t-n_past+1] = all_gen[ensemble][t][batch_number][0].detach().numpy() * 64.
+                #print('mean = ', np.mean(pred_cube.data))
                 pred_cube.units = 'mm/hr'
-                #print('{} : T+{:02d} min'.format(start_date[i], t*5))
-                #if t == 0:
-                #    qplt.contourf(pred_cube[0])
-                #    plt.show()
+            #print("/data/cr1/cbarth/phd/SVG/model_output/{}_ens2/plots_nn_T{}_{}_ens{}.nc".format(mod, dt_str, mod, ensemble))
+            iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/model_output/{}_ens3/plots_nn_T{}_{}_ens{}.nc".format(mod, dt_str, mod, ensemble))
 
-            iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/model_output/{}/plots_nn_T{}_{}.nc".format(mod, dt_str, mod))
-
-            dtime = dtime + timedelta(minutes=15)
+    dtime = dtime + timedelta(minutes=15)
 
 # --------- load a dataset ------------------------------------
 def chunks(l, n):
@@ -177,24 +170,10 @@ def prep_data(files, n_eval, batch_size):
 
     # only keep filenames where the right number of  consecutive files exist at 5 min intervals
     sorted_files = list(sorted_files1[0:0+n_eval]) #chunks(sorted_files1, n_eval))
-    #for group in sorted_files:
-    #    if len(group) < n_eval:
-    #        sorted_files.remove(group)
-    #    else:
-    #        t0 = group[0].find('201')
-    #        dt1 = datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
-    #        t9 = group[n_eval-1].find('201')
-    #        dt2 = datetime.strptime(group[n_eval-1][t9:t9+12], '%Y%m%d%H%M')
-    #        #print(dt1, dt2)
-    #        if (dt2-dt1 != timedelta(minutes=n_eval*5)):
-    #            print(dt2-dt1, 'remove files')
-    #            sorted_files.remove(group)
 
-    #start_date = []
     dataset = []
     #for fn in sorted_files:
     fn = sorted_files #[0]
-    print(fn[0])
     cube = iris.load(fn)
     if len(cube) > 1:
         for i, cu in enumerate(cube):
@@ -210,7 +189,7 @@ def prep_data(files, n_eval, batch_size):
         print('small data of size ', len(data))
         skip = True
         loader = []
-        start_date = []
+        start_date = cube.coord('forecast_reference_time')[0]
     elif np.mean(data) > 0.01: #0.5: #0.1: # limit loading to rainy days to speed up extraction
         skip = False
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
@@ -317,25 +296,16 @@ def make_gifs(x, name, frame_predictor, posterior, n_eval, encoder, decoder,
     return(ssim, x, posterior_gen, all_gen)
 
 if __name__ == "__main__":
-    #startdates = []
-    #startdate = datetime.strptime('201912010005', '%Y%m%d%H%M')  #05  #09
-    #startdate = datetime.strptime('202008271205', '%Y%m%d%H%M')
-    #main(startdate)
-    mod = 'model624800'
-
     startdates = []
-    startdate = datetime.strptime('201912090005', '%Y%m%d%H%M')   #05  #09
+    startdate = datetime.strptime('201912290005', '%Y%m%d%H%M')   #05  #09
+    mod = 'model624800'
     #startdate = datetime.strptime('202008271205', '%Y%m%d%H%M')
     for d in range (0, 360): #1): #335): #30): #, 3):
         for m in range(96):
             startdates.append(startdate + timedelta(days = d) + timedelta(minutes = m*15))
 
-    #tb.parallelise(main)(startdates)
     for date in startdates:
         print(date)
         dt_str = datetime.strftime(date, '%Y%m%d%H%M')
-        if not os.path.exists('/data/cr1/cbarth/phd/SVG/model_output/{}/plots_nn_T{}_{}.nc'.format(mod, dt_str, mod)):
-            print('yes')
+        if not os.path.exists('/data/cr1/cbarth/phd/SVG/model_output/{}_ens3/plots_nn_T{}_{}_ens1nc'.format(mod, dt_str, mod)):
             main(date)
-        else:
-            print(dt_str)

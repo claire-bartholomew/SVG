@@ -48,9 +48,10 @@ dtype = torch.FloatTensor
 def main(startdate, model_path, model, domain, threshold):
 
     print('Model = ', model_path, model)
-    startdate = datetime.strptime('201912171645', '%Y%m%d%H%M') # for running inference for verification
-    enddate = datetime.strptime('201912172000', '%Y%m%d%H%M') # for running inference for verification
+    #startdate = datetime.strptime('201907110845', '%Y%m%d%H%M') # for running inference for verification
+    #enddate = datetime.strptime('201907111100', '%Y%m%d%H%M') # for running inference for verification
     dtime = startdate
+    enddate = startdate + timedelta(minutes=15)
 
     frame_predictor, posterior, prior, encoder, decoder, last_frame_skip = load_model(model_path, model)
 
@@ -90,7 +91,7 @@ def main(startdate, model_path, model, domain, threshold):
                     dt_str = '{}{}{}{}{}'.format(yyyy, mm, dd, hh, mi)
 
                     #fname = "/data/cr1/cbarth/phd/SVG/model_output/{}/plots_nn_T{}_{}.nc".format(model[:-4], dt_str, model[:-4])
-                    fname = "/data/cr1/cbarth/phd/SVG/nn_T{}_{}.nc".format(model[:-4], dt_str, model[:-4])
+                    fname = "/data/cr1/cbarth/phd/SVG/plots_nn_T{}_{}.nc".format(model[:-4], dt_str, model[:-4])
                     if not os.path.isfile(fname):
                         # generate predictions
                         test_x = next(testing_batch_generator)
@@ -104,10 +105,10 @@ def main(startdate, model_path, model, domain, threshold):
                         for t in range(n_eval):
                             pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
                             pred_cube.units = 'mm/hr'
-                            print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
+                        print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
                         #iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/model_output/model624800/plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
-                        iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/test.nc")
-
+                        #iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/test.nc")
+                        iris.save(pred_cube, "/data/cr1/cbarth/phd/SVG/plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
 
             dtime = dtime + timedelta(minutes=15)
 
@@ -164,6 +165,8 @@ def prep_data(files, n_eval, domain, threshold):
 
     # only keep filenames where the right number of  consecutive files exist at 5 min intervals
     sorted_files = list(sorted_files1[0:0+n_eval]) #chunks(sorted_files1, n_eval))
+
+    pdb.set_trace()
 
     dataset = []
     fn = sorted_files
@@ -250,6 +253,7 @@ def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last
             h, _ = h
         h = h.detach()
         _, z_t, _= posterior(h_target) # take the mean
+        #import pdb; pdb.set_trace()
         if i < n_past:
             frame_predictor(torch.cat([h, z_t], 1))
             x_in = x[i]
@@ -263,6 +267,7 @@ def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last
     psnr = np.zeros((batch_size, nsample, n_future))
     all_gen = []
     for s in range(nsample):
+        print('sample number:', s)
         gen_seq = []
         gt_seq = []
         frame_predictor.hidden = frame_predictor.init_hidden()
@@ -281,21 +286,28 @@ def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last
             h = h.detach()
             if i < n_past:
                 h_target = encoder(x[i])[0].detach()
-                z_t, _, _ = posterior(h_target)
+                z_t, mu, logvar = posterior(h_target)
+                #print('mu = ', mu)
                 prior(h)
                 frame_predictor(torch.cat([h, z_t], 1))
                 x_in = x[i]
 
                 all_gen[s].append(x_in)
             else:
-                z_t, _, _ = prior(h)
+                z_t, mu, logvar = prior(h)
+                #print('prior mu = ', mu)
+                #print('prior logvar = ', logvar)
                 h = frame_predictor(torch.cat([h, z_t], 1)).detach()
                 x_in = decoder([h, skip]).detach()
 
                 gen_seq.append(x_in.data.cpu().numpy())
                 gt_seq.append(x[i].data.cpu().numpy())
                 all_gen[s].append(x_in)
+
         _, ssim[:, s, :], psnr[:, s, :] = utils.eval_seq(gt_seq, gen_seq)
+
+    #pdb.set_trace()
+    print('np.shape(z_t) = ', np.shape(z_t))
 
     return(ssim, x, posterior_gen, all_gen)
 

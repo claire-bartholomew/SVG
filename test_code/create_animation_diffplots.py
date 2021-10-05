@@ -9,12 +9,11 @@ import iris.plot as iplt
 import iris.quickplot as qplt
 import matplotlib
 import matplotlib.pyplot as plt
-import cartopy.crs as ccrs
 
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201908121100' #201910011500' #202008271800' #201909281800' #07191300' #10272345' #291300' #201909191200' #201908141730' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
+    dt_str = '202008271230' #201909281800' #07191300' #10272345' #291300' #201909191200' #201908141730' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
     model = 'model624800.pth' #810068.pth'  #817118.pth'  #810069.pth' #625308.pth' #624800.pth' #723607.pth' #712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
@@ -31,7 +30,7 @@ def main():
     if prior == 'fp':
         import run_svg_fp as run_svg
     else:
-        import run_svg_lp_new as run_svg
+        import run_svg_lp as run_svg
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -39,12 +38,12 @@ def main():
 
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
-    run_svg.main(dt, model_path, model, domain, threshold, datadi)
+    #run_svg.main(dt, model_path, model, domain, threshold, datadi)
+    #run_svg.main(dt, model_path, model2, domain, threshold)
 
     # Neural network output
-    #nn_cubelist = load_nn_pred(dt_str, model, domain, nn_datadi) #always domain here even when plotting r_domain, just uncomment line in the function
-    nn_cubelist = load_ens_nn_pred(dt_str, model, ens_n=7)
-
+    nn_cubelist = load_nn_pred(dt_str, model, domain, nn_datadi) #always domain here even when plotting r_domain, just uncomment line in the function
+    #nn_cubelist2 = load_nn_pred(dt_str, model2, domain) #always domain here even when plotting r_domain, just uncomment line in the function
     # Radar sequence
     r_cubelist = load_radar(dt, dt_str, sample_points, domain, datadi) #r_domain)
     # Operational nowcast output
@@ -55,8 +54,9 @@ def main():
 
 def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior, model): #, nn_cubelist2):
     # define colours and levels for colorbar
-    colors = ['black', 'cornflowerblue', 'royalblue', 'blue', 'lime', 'yellow', 'orange', 'red', 'fuchsia'] #, 'white']
-    levels = [0, 0.1, 0.25, 0.5, 1., 2., 4., 8. ,16., 32.]
+    #colors = ['black', 'cornflowerblue', 'royalblue', 'blue', 'lime', 'yellow', 'orange', 'red', 'fuchsia'] #, 'white']
+    #levels = [0, 0.1, 0.25, 0.5, 1., 2., 4., 8. ,16., 32.]
+    levels = [-16, -8, -4, -2, -1, 0, 1, 2, 4, 8, 16]
 
     # Set up video configuration
     FFMpegWriter = manimation.writers['ffmpeg']
@@ -66,52 +66,59 @@ def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior, model): #, nn_cu
     fig = plt.figure(figsize=(12, 5))
 
     # Set video filename
-    filename = "animations/{}_radar_animation_{}_{}_zoom.mp4".format(prior, dt_str, model[:-4])
+    filename = "animations/{}_radar_animation_diff_{}_{}.mp4".format(prior, dt_str, model[:-4])
 
     # Add axes to the figure, to place the colour bar [left, bottom, width, height] (of cbar)
     colorbar_axes = fig.add_axes([0.15, 0.1, 0.73, 0.03])
 
-    airport_data = [("Gatwick", 51.1537, -0.1821), ("Heathrow", 51.47, -0.4543)]
-
     # Create plot frames
     with writer.saving(fig, filename, 300):
         for t in range(12):#21): #8):
+            on_cube = n_cubelist[t]
+            nn_cube = on_cube.copy()
+            nn_cube.data = nn_cubelist[0][t+1].data * 1.5 #fix scaling issue by adding multiplicative factor
+            #nn_cube.data = nn_cube.data * 1.5  #fix scaling issue by adding multiplicative factor
+            r_cube = on_cube.copy()
+            r_cube.data = r_cubelist[t].data
+            p_cube = on_cube.copy()
+            p_cube.data = r_cubelist[0].data
+            on_cube.units = 'mm/hr'
+            nn_cube.units = 'mm/hr'
+            r_cube.units = 'mm/hr'
+            p_cube.units = 'mm/hr'
+            #pdb.set_trace()
+
             print('time = ', (t+1)*5) #15)
             ax = fig.add_subplot(1,3,1)
-            #pdb.set_trace()  # adding [0:64, 64:128] to reduce domain to focus on SE England
-            cf = iplt.contourf(r_cubelist[t][0:74, 54:128], levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
-            #cf.cmap.set_over('white')
+            cf = iplt.contourf(r_cube - p_cube, levels, cmap="bwr", origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
+            cf.cmap.set_over('white')
             plt.gca().coastlines('50m', color='white')
-            for name, lat, lon in airport_data:
-                plt.plot(lon, lat, marker="o", markerfacecolor="white", markeredgecolor="white", transform=ccrs.PlateCarree())
-            plt.title('Radar', fontsize=18)
+            plt.title('radar - persistence', fontsize=10)
+            print('per mean loss = ', np.mean(np.abs(r_cube.data)-np.abs(p_cube.data)))
 
             ax = fig.add_subplot(1,3,2)
             #pdb.set_trace()
-            print(nn_cubelist[0][t+1])
-            nn_cube = nn_cubelist[0][t+1][0:74, 54:128] #* 1.5  #fix scaling issue by adding multiplicative factor
-            cf = iplt.contourf(nn_cube, levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
-            #cf.cmap.set_over('white')
+            #print(nn_cubelist[0][t+1])
+            cf = iplt.contourf(r_cube - nn_cube, levels, cmap="bwr", origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
+            print('nn mean loss = ', np.mean(np.abs(r_cube.data)-np.abs(nn_cube.data)))
+            cf.cmap.set_over('white')
             plt.gca().coastlines('50m', color='white')
-            for name, lat, lon in airport_data:
-                plt.plot(lon, lat, marker="o", markerfacecolor="white", markeredgecolor="white", transform=ccrs.PlateCarree())
-            plt.title('ML prediction', fontsize=18)
+            plt.title('radar - nn nwcst', fontsize=10)
 
             ax = fig.add_subplot(1,3,3)
-            cf = iplt.contourf(n_cubelist[t][0:74, 54:128], levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
+            cf = iplt.contourf(r_cube - on_cube, levels, cmap="bwr", origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
             ##cf = iplt.contourf(nn_cubelist2[0][t+1], levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
-            #cf.cmap.set_over('white')
+            cf.cmap.set_over('white')
             plt.gca().coastlines('50m', color='white')
-            for name, lat, lon in airport_data:
-                plt.plot(lon, lat, marker="o", markerfacecolor="white", markeredgecolor="white", transform=ccrs.PlateCarree())
-            plt.title('Op nowcast', fontsize=18)
+            plt.title('radar - op nwcst', fontsize=10)
             ##plt.title('No LSTM', fontsize=15)
+            print('on mean loss = ', np.mean(np.abs(r_cube.data)-np.abs(on_cube.data)))
 
             # Add the colour bar
-            cbar = plt.colorbar(cf, colorbar_axes, orientation='horizontal')
+            cbar = plt.colorbar(cf, colorbar_axes, orientation='horizontal', ticks=levels)
             cbar.ax.set_xlabel('Rain rate (mm/hr)')
 
-            fig.suptitle('T+{:02d} min'.format((t+1)*5), fontsize=30)
+            fig.suptitle('Diff plots - T+{:02d} min'.format((t+1)*5), fontsize=20)
             # Save frame
             writer.grab_frame()
     plt.close()
@@ -132,22 +139,6 @@ def load_nn_pred(dt_str, model, domain, nn_datadi):
     nn_cube = nn_cubes[0]
     #nn_cube = nn_cube[:, 25:-25, 25:-25] #when running with reduced domain
     #print(nn_cube)
-    for t in range(1, 25): #[3, 6, 9, 12, 15, 18, 21, 24]:
-        nn_cubelist.append(nn_cube)
-
-    return nn_cubelist
-
-def load_ens_nn_pred(dt_str, model, ens_n):
-    dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
-    dt = dt + timedelta(minutes = 5)
-    dt_str = datetime.strftime(dt, '%Y%m%d%H%M')
-    nn_cubelist = []
-    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/{}_ens3/plots_nn_T{}_{}_ens{}.nc'.format(model[:-4], dt_str, model[:-4], ens_n)
-    print(nn_f)
-    # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
-    cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
-    nn_cubes = list(cube_gen)
-    nn_cube = nn_cubes[0]
     for t in range(1, 25): #[3, 6, 9, 12, 15, 18, 21, 24]:
         nn_cubelist.append(nn_cube)
 

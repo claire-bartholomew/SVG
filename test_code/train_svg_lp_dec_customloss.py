@@ -7,7 +7,6 @@ import os
 import random
 from torch.autograd import Variable
 from torch.utils.data import DataLoader
-from torchvision import transforms
 import utils
 import itertools
 import pdb
@@ -16,9 +15,6 @@ import numpy as np
 import re
 import datetime
 import time
-import h5py 
-from pathlib import Path
-from torch.utils import data
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
@@ -56,7 +52,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model7.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model4.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -139,7 +135,20 @@ decoder_optimizer = opt.optimizer(decoder.parameters(), lr=opt.lr, betas=(opt.be
 print('------------models set up-----------')
 
 # --------- loss functions ------------------------------------
-mse_criterion = nn.MSELoss()
+#mse_criterion = nn.MSELoss()
+
+def exp_criterion(prediction, target):
+    '''
+    Error to give more weighting to higher rain rates
+    '''
+    #error = torch.abs(prediction - target)**2
+    #error = error * torch.exp(target) 
+    #loss = torch.mean(error)
+    error = (torch.log(prediction / target))**2
+    loss = torch.exp(torch.sqrt(torch.mean(error)))
+   
+    return loss 
+
 def kl_criterion(mu1, logvar1, mu2, logvar2):
     # KL( N(mu_1, sigma2_1) || N(mu_2, sigma2_2)) = 
     #   log( sqrt(
@@ -157,148 +166,30 @@ posterior.cuda()
 prior.cuda()
 encoder.cuda()
 decoder.cuda()
-mse_criterion.cuda()
+#exp_criterion.cuda()
+#mse_criterion.cuda()
 
 # --------- load a dataset ------------------------------------
-class HDF5Dataset(data.Dataset):
-    """Represents an abstract HDF5 dataset.
-    
-    Input params:
-        file_path: Path to the folder containing the dataset (one or multiple HDF5 files).
-        recursive: If True, searches for h5 files in subdirectories.
-        load_data: If True, loads all the data immediately into RAM. Use this if
-            the dataset is fits into memory. Otherwise, leave this at false and 
-            the data will load lazily.
-        data_cache_size: Number of HDF5 files that can be cached in the cache (default=3).
-        transform: PyTorch transform to apply to every data instance (default=None).
-    """
-    def __init__(self, file_path, recursive=False, load_data=False, data_cache_size=3, transform=None):
-        super().__init__()
-        self.data_info = []
-        self.data_cache = {}
-        self.data_cache_size = data_cache_size
-        self.transform = transform
-
-        # Search for all h5 files
-        p = Path(file_path)
-        assert(p.is_dir())
-        if recursive:
-            files = sorted(p.glob('**/*.h5'))
-        else:
-            files = sorted(p.glob('*.h5'))
-        if len(files) < 1:
-            raise RuntimeError('No hdf5 datasets found')
-
-        for h5dataset_fp in files:
-            self._add_data_infos(str(h5dataset_fp.resolve()), load_data)
-            
-    def __getitem__(self, index):
-        # get data
-        x = self.get_data("data", index)
-        if self.transform:
-            x = self.transform(x)
-        else:
-            x = torch.from_numpy(x)
-
-        # get label
-        y = self.get_data("label", index)
-        y = torch.from_numpy(y)
-        return (x, y)
-
-    def __len__(self):
-        return len(self.get_data_infos('data'))
-    
-    def _add_data_infos(self, file_path, load_data):
-        with h5py.File(file_path) as h5_file:
-            # Walk through all groups, extracting datasets
-            #for gname, group in h5_file.items():
-                #for dname, ds in group.items():
-            for dname, ds in h5_file.items():
-                # if data is not loaded its cache index is -1
-                idx = -1
-                if load_data:
-                    # add data to the data cache
-                    idx = self._add_to_cache(ds.value, file_path)
-                    
-                # type is derived from the name of the dataset; we expect the dataset
-                # name to have a name such as 'data' or 'label' to identify its type
-                # we also store the shape of the data in case we need it
-                self.data_info.append({'file_path': file_path, 'type': dname, 'shape': ds.value.shape, 'cache_idx': idx})
-
-    def _load_data(self, file_path):
-        """Load data to the cache given the file
-        path and update the cache index in the
-        data_info structure.
-        """
-        with h5py.File(file_path) as h5_file:
-            for gname, group in h5_file.items():
-                for dname, ds in group.items():
-                    # add data to the data cache and retrieve
-                    # the cache index
-                    idx = self._add_to_cache(ds.value, file_path)
-
-                    # find the beginning index of the hdf5 file we are looking for
-                    file_idx = next(i for i,v in enumerate(self.data_info) if v['file_path'] == file_path)
-
-                    # the data info should have the same index since we loaded it in the same way
-                    self.data_info[file_idx + idx]['cache_idx'] = idx
-
-        # remove an element from data cache if size was exceeded
-        if len(self.data_cache) > self.data_cache_size:
-            # remove one item from the cache at random
-            removal_keys = list(self.data_cache)
-            removal_keys.remove(file_path)
-            self.data_cache.pop(removal_keys[0])
-            # remove invalid cache_idx
-            self.data_info = [{'file_path': di['file_path'], 'type': di['type'], 'shape': di['shape'], 'cache_idx': -1} if di['file_path'] == removal_keys[0] else di for di in self.data_info]
-
-    def _add_to_cache(self, data, file_path):
-        """Adds data to the cache and returns its index. There is one cache
-        list for every file_path, containing all datasets in that file.
-        """
-        if file_path not in self.data_cache:
-            self.data_cache[file_path] = [data]
-        else:
-            self.data_cache[file_path].append(data)
-        return len(self.data_cache[file_path]) - 1
-
-    def get_data_infos(self, type):
-        """Get data infos belonging to a certain type of data.
-        """
-        data_info_type = [di for di in self.data_info if di['type'] == type]
-        return data_info_type
-
-    def get_data(self, type, i):
-        """Call this function anytime you want to access a chunk of data from the
-            dataset. This will make sure that the data is loaded in case it is
-            not part of the data cache.
-        """
-        fp = self.get_data_infos(type)[i]['file_path']
-        if fp not in self.data_cache:
-            self._load_data(fp)
-        
-        # get new cache_idx assigned by _load_data_info
-        cache_idx = self.get_data_infos(type)[i]['cache_idx']
-        return self.data_cache[fp][cache_idx]
 
 def chunks(l, n):
     """Yield successive n-sized chunks from l."""
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def prep_data(files): #, filedir):
+def prep_data(files, filedir):
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     timeformat = "%Y%m%d%H%M"
-    #if filedir == 'train':
-    regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
-    #elif filedir == 'test':
-    #    regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
-    #elif filedir == 'may':
-    #    regex = re.compile("^/nobackup/sccsb/radar/may/(\d*)")
+    if filedir == 'train':
+        #regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/(\d*)")
+        regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
+    elif filedir == 'test':
+        regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
+    elif filedir == 'may':
+        regex = re.compile("^/nobackup/sccsb/radar/may/(\d*)")
 
     def gettimestamp(thestring):
         m = regex.search(thestring)
@@ -306,8 +197,6 @@ def prep_data(files): #, filedir):
 
     # sort files by datetime
     sorted_files = sorted(files, key=gettimestamp)
-    ##reduce to every 6th files, i.e. every half hour
-    #sorted_files = sorted_files[0::6]
 
     # only keep filenames where 10 consecutive files exist at 5 min intervals
     sorted_files = list(chunks(sorted_files, 10))
@@ -319,7 +208,7 @@ def prep_data(files): #, filedir):
             dt1 = datetime.datetime.strptime(group[0][t0:t0+12], '%Y%m%d%H%M')
             t9 = group[9].find('2018')
             dt2 = datetime.datetime.strptime(group[9][t9:t9+12], '%Y%m%d%H%M')
-            if (dt2-dt1 != datetime.timedelta(minutes=45)): #45 for sequences of 5, 270 for sequences of 30
+            if (dt2-dt1 != datetime.timedelta(minutes=45)):
                 print(dt2-dt1, 'remove files')
                 sorted_files.remove(group)
     count = 0
@@ -331,20 +220,25 @@ def prep_data(files): #, filedir):
         cube = cube[0] / 32.
         cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
         data = cube1.data
+        #pdb.set_trace()
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
-        #data = data[:, 288:416, 100:228] # scottish domain
 
-        # limit range of data
-        #data[np.where(data < 4)] = 0. #mask data to concentrate on higher rain rates
-        data[np.where(data < 0)] = 0.
+        data[np.where(data <= 0)] = 0.000001 # can't be 0 as RMSF won't like division by 0
+        #data[np.where(data > 32)] = 32.
         data[np.where(data > 64)] = 64.
-
-        #Log transform of data
-        #data = np.log(data+1)
+        #maxi = np.amax(data)
+        #print('max value in data = ', maxi)
 
         # Normalise data
+        #data = data / 32.
         data = data / 64.
-        #data = data / np.log(64.)
+        #maxi = 361.06317874152296
+        #data = data / maxi
+
+        # Standardise data (stats calculated from rainy days list)
+        #mean = 0.217
+        #std = 0.875
+        #data = (data - mean) / std
 
         if len(data) < 10:
             print(fn)
@@ -352,61 +246,42 @@ def prep_data(files): #, filedir):
             count += 1
         else:
             dataset.append(data)
-    print(dataset)
-    print(dataset[0])
+
     print('count', count)
     #print('data max', np.amax(dataset))
     #dataset = dataset / np.amax(dataset)
 
     print('size of data:', len(dataset), np.shape(dataset))
 
-    h5f = h5py.File('data.h5', 'w')
-    h5f.create_dataset('dataset', data=dataset)
-    h5f.close()
+    # Convert to torch tensors
+    tensor = torch.stack([torch.Tensor(i) for i in dataset])
+    #print(tensor)
+    #pdb.set_trace()
 
-    #h5f2 = h5py.File('data.h5','r')
-    #b = h5f2['dataset'][:]
-    #h5f2.close()
+    #print(tensor)
+    #pdb.set_trace()
 
-    ## Convert to torch tensors
-    #tensor = torch.stack([torch.Tensor(i) for i in dataset])
-
-    transform_train = transforms.Compose([
-        transforms.RandomRotation(180), #RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        #transforms.Normalize(rgb_mean, rgb_std),
-    ])
-
-    transformed_data = HDF5Dataset('/nobackup/sccsb/radar/h5', recursive=False, load_data=False,
-                                   data_cache_size=4, transform=transform_train)
-
-    #data_loader = data.DataLoader(dataset, **loader_params)
-
-    loader = DataLoader(transformed_data, #tensor, #batch_size=1)
+    loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
                         batch_size=opt.batch_size,
-                        shuffle=False, #True,
-                        #train=True,
-                        #transform=transform_train,
+                        shuffle=True,
                         #drop_last=True,
                         pin_memory=True)
-
     return loader
 
-rainy_dates = ['0102', '0103', '0104', '0114', '0115', '0116', '0117', '0121'] #,
-#               '0122', '0123', '0124', '0128', '0130', '0131', '0208', '0209',
-#               '0210', '0212', '0214', '0218', '0304', '0305', '0309', '0310',
-#               '0311', '0314', '0315', '0322', '0326', '0327', '0329', '0330',
-#               '0401', '0402', '0403', '0404', '0409', '0424', '0427', '0501',
-#               '0512', '0602', '0613', '0619', '0727', '0728', '0729', '0809',
-#               '0810', '0811', '0812', '0815', '0818', '0824', '0826', '0910',
-#               '0911', '0915', '0917', '0918', '0919', '0920', '0922', '1007',
-#               '1008', '1011', '1012', '1013', '1014', '1031', '1102', '1103',
-#               '1106', '1107', '1108', '1109', '1110', '1112', '1113', '1120',
-#               '1127', '1128', '1129', '1130', '1201', '1202', '1204', '1205',
-#               '1206', '1207', '1208', '1215', '1216', '1217', '1218', '1219',
-#               '1220', '1221']
+rainy_dates = ['0102', '0103', '0104', '0114', '0115', '0116', '0117', '0121',
+               '0122', '0123', '0124', '0128', '0130', '0131', '0208', '0209',
+               '0210', '0212', '0214', '0218', '0304', '0305', '0309', '0310',
+               '0311', '0314', '0315', '0322', '0326', '0327', '0329', '0330',
+               '0401', '0402', '0403', '0404', '0409', '0424', '0427', '0501',
+               '0512', '0602', '0613', '0619', '0727', '0728', '0729', '0809',
+               '0810', '0811', '0812', '0815', '0818', '0824', '0826', '0910',
+               '0911', '0915', '0917', '0918', '0919', '0920', '0922', '1007',
+               '1008', '1011', '1012', '1013', '1014', '1031', '1102', '1103',
+               '1106', '1107', '1108', '1109', '1110', '1112', '1113', '1120',
+               '1127', '1128', '1129', '1130', '1201', '1202', '1204', '1205',
+               '1206', '1207', '1208', '1215', '1216', '1217', '1218', '1219',
+               '1220', '1221']
 
 #val_dates = ['1222']
 
@@ -418,7 +293,7 @@ list_train = []
 for file in files_t:
     if os.path.isfile(file):
         list_train.append(file)
-train_loader = prep_data(list_train) #, 'train')
+train_loader = prep_data(list_train, 'train')
 print('training data loaded')
 
 #files_v = [f'/nobackup/sccsb/radar/test/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
@@ -575,7 +450,8 @@ def train(x):
     posterior.hidden = posterior.init_hidden()
     prior.hidden = prior.init_hidden()
 
-    mse = 0
+    #mse = 0
+    exp_loss = 0
     kld = 0
     for i in range(1, opt.n_past+opt.n_future):
         #print(i)
@@ -589,10 +465,13 @@ def train(x):
         _, mu_p, logvar_p = prior(h)
         h_pred = frame_predictor(torch.cat([h, z_t], 1))
         x_pred = decoder([h_pred, skip])
-        mse += mse_criterion(x_pred, x[i])
+        #mse += mse_criterion(x_pred, x[i])
+        exp_loss += exp_criterion(x_pred, x[i])
+        #print('mu=', mu, 'logvar=', logvar, 'mu_p=', mu_p, 'logvar_p=', logvar_p)
         kld += kl_criterion(mu, logvar, mu_p, logvar_p)
 
-    loss = mse + kld*opt.beta
+    #loss = mse + kld*opt.beta
+    loss = exp_loss + kld*opt.beta
     loss.backward()
 
     frame_predictor_optimizer.step()
@@ -601,12 +480,14 @@ def train(x):
     encoder_optimizer.step()
     decoder_optimizer.step()
 
-    return mse.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
+    #return mse.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
+    return exp_loss.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
 
 # --------- training loop ------------------------------------
 print('Start training loop')
-mse_loss = []
+#mse_loss = []
 kld_loss = []
+exp_loss = []
 for epoch in range(opt.niter):
     print('epoch = {}'.format(epoch))
     frame_predictor.train()
@@ -614,8 +495,9 @@ for epoch in range(opt.niter):
     prior.train()
     encoder.train()
     decoder.train()
-    epoch_mse = 0
+    #epoch_mse = 0
     epoch_kld = 0
+    epoch_exp_loss = 0
     #progress = progressbar.ProgressBar(max_value=opt.epoch_size).start()
     for i in range(opt.epoch_size):
         #print(i)
@@ -623,16 +505,20 @@ for epoch in range(opt.niter):
         x = next(training_batch_generator)
 
         # train frame_predictor 
-        mse, kld = train(x)
-        epoch_mse += mse
+        #mse, kld = train(x)
+        expl, kld = train(x)
+        epoch_exp_loss += expl
+        #epoch_mse += mse
         epoch_kld += kld
 
     #progress.finish()
     #utils.clear_progressbar()
 
-    print('[%02d] mse loss: %.5f | kld loss: %.5f (%d)' % (epoch, epoch_mse/opt.epoch_size, epoch_kld/opt.epoch_size, epoch*opt.epoch_size*opt.batch_size))
+    #print('[%02d] mse loss: %.5f | kld loss: %.5f (%d)' % (epoch, epoch_mse/opt.epoch_size, epoch_kld/opt.epoch_size, epoch*opt.epoch_size*opt.batch_size))
+    print('[%02d] exp loss: %.5f | kld loss: %.5f (%d)' % (epoch, epoch_exp_loss/opt.epoch_size, epoch_kld/opt.epoch_size, epoch*opt.epoch_size*opt.batch_size))
 
-    mse_loss.append(epoch_mse/opt.epoch_size)
+    exp_loss.append(epoch_exp_loss/opt.epoch_size)
+    #mse_loss.append(epoch_mse/opt.epoch_size)
     kld_loss.append(epoch_kld/opt.epoch_size)
 
     # plot some stuff
@@ -654,10 +540,11 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model7.pth' % opt.log_dir)
+        '%s/model5.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
 
-    print('MSE losses: ', mse_loss)
+    #print('MSE losses: ', mse_loss)
+    print('EXP losses: ', exp_loss)
     print('KLD losses: ', kld_loss)

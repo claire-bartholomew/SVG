@@ -8,16 +8,15 @@ import iris.quickplot as qplt
 import iris.plot as iplt
 import nimrod_to_cubes as n2c
 
-
 def main(leadtime):
 
     count = 0
 
     model_n = '624800' #1755653' #624800' #1734435' #624800' #842306' #625308' #624800' #'131219'
-    ts = 5 #5 #30 #model timestep separation
+    ts = 5 #30 #model timestep separation
     # Choose variables
     thrshld = 4 # rain rate threshold (mm/hr)
-    neighbourhood = 9 #25   # neighbourhood size (e.g. 9 = 3x3)
+    neighbourhood = 25 #9 #25   # neighbourhood size (e.g. 9 = 3x3)
     #leadtime = 30 # forecast lead time
     domain = [160, 288, 130, 258] # england (training data domain)
 
@@ -26,11 +25,8 @@ def main(leadtime):
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     radar_dir = '/data/cr1/cbarth/phd/SVG/verification_data/radar/'
-    files = [f'{radar_dir}201905{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK'\
-             for dd in range(2, 30) for h in range(24) for mi in range(0, 60, 15)] #10, 70, 15)] #[0]]
-    #files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in [1, 5, 9]\
-    #         for dd in range(2, 30) for h in range(24) for mi in range(0, 60, 15)] #[0]]
-
+    files = [f'{radar_dir}2019{mo:02}{dd:02}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' for mo in range(1, 13)\
+             for dd in range(2, 29) for h in range(24) for mi in range(0, 60, 15)]
     fbs_nn_sum = 0
     fbs_nn_worst_sum = 0
     fbs_on_sum = 0
@@ -41,42 +37,42 @@ def main(leadtime):
     for file in files:
         dt = datetime.strptime(file, '{}%Y%m%d%H%M_nimrod_ng_radar_rainrate_composite_1km_UK'.format(radar_dir))
         dt_str = dt.strftime('%Y%m%d%H%M')
-
         # Load radar data
         r_cube = load_radar(dt, sample_points, leadtime, domain, ts)
-        #print(r_cube)
-        # Check if enough rain to be worth verifying
-        if np.mean(r_cube.data) > 0.5: #0.1:
-            #print(dt)
-            nn_cube, skip = load_nn_pred(dt_str, leadtime, model_n, ts)
-            on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
-            p_cube = load_persistence(dt, sample_points, ts, domain)
-            if ((skip == False) & (skip0 == False)):
-                count += 1
-                #quickplot(nn_cube, r_cube)
+        if r_cube != 0:
+            # Check if enough rain to be worth verifying
+            if np.mean(r_cube.data) > 0.5: #1: #0.5: #0.1:
+                #print(dt)
+                nn_cube, skip = load_nn_pred(dt_str, leadtime, model_n, ts)
+                on_cube, skip0 = load_op_nowcast(dt_str, sample_points, leadtime, domain)
+                p_cube = load_persistence(dt, sample_points, ts, domain)
+                #pdb.set_trace()
+                if ((skip == False) & (skip0 == False)):
+                    count += 1
+                    #quickplot(nn_cube, r_cube)
 
-                # Generate fractions over grid
-                ob_fraction = generate_fractions(r_cube, n_size=neighbourhood,
+                    # Generate fractions over grid
+                    ob_fraction = generate_fractions(r_cube, n_size=neighbourhood,
                                                  threshold=thrshld)
-                nn_fraction = generate_fractions(nn_cube, n_size=neighbourhood,
+                    nn_fraction = generate_fractions(nn_cube, n_size=neighbourhood,
                                                  threshold=thrshld)
-                on_fraction = generate_fractions(on_cube, n_size=neighbourhood,
+                    on_fraction = generate_fractions(on_cube, n_size=neighbourhood,
                                                 threshold=thrshld)
-                p_fraction = generate_fractions(p_cube, n_size=neighbourhood,
+                    p_fraction = generate_fractions(p_cube, n_size=neighbourhood,
                                                 threshold=thrshld)
 
-                # Calculate FBS and FBSworst for NN
-                fbs, fbs_worst = calculate_fbs(ob_fraction, nn_fraction)
-                fbs_nn_sum += fbs
-                fbs_nn_worst_sum += fbs_worst
-                # Calculate FBS and FBSworst for ON
-                fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_fraction)
-                fbs_on_sum += fbs_on
-                fbs_on_worst_sum += fbs_worst_on
-                # Calculate FBS and FBSworst for persistence
-                fbs_p, fbs_worst_p = calculate_fbs(ob_fraction, p_fraction)
-                fbs_p_sum += fbs_p
-                fbs_p_worst_sum += fbs_worst_p
+                    # Calculate FBS and FBSworst for NN
+                    fbs, fbs_worst = calculate_fbs(ob_fraction, nn_fraction)
+                    fbs_nn_sum += fbs
+                    fbs_nn_worst_sum += fbs_worst
+                    # Calculate FBS and FBSworst for ON
+                    fbs_on, fbs_worst_on = calculate_fbs(ob_fraction, on_fraction)
+                    fbs_on_sum += fbs_on
+                    fbs_on_worst_sum += fbs_worst_on
+                    # Calculate FBS and FBSworst for persistence
+                    fbs_p, fbs_worst_p = calculate_fbs(ob_fraction, p_fraction)
+                    fbs_p_sum += fbs_p
+                    fbs_p_worst_sum += fbs_worst_p
     # for outputs
     print('model = ', model_n)
     print('count = ', count)
@@ -101,28 +97,35 @@ def main(leadtime):
     print('====================================')
 
 def load_nn_pred(dt_str, leadtime, model_n, ts):
-    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}_v0/plots_nn_T{}_model{}.nc'.format(model_n, dt_str, model_n)
+
+    #need to add 5 mins to datestr to get nn filenmae in model624800 dir
+    date = datetime.strptime(dt_str, '%Y%m%d%H%M')   #05  #09
+    nn_file_date = date + timedelta(minutes = 5)
+    nn_dt_str = datetime.strftime(nn_file_date, '%Y%m%d%H%M')
+
+    nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model{}/plots_nn_T{}_model{}.nc'.format(model_n, nn_dt_str, model_n)
     if os.path.exists(nn_f):
+        #print('nn file: {}'.format(nn_f))
         skip = False
         # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
         cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
         nn_cubes = list(cube_gen)
         nn_cube1 = nn_cubes[0] #* 2
         # Get index for leadtime and extract data
-        nn_cube = nn_cube1[int(leadtime / ts + 2)]
+        nn_cube = nn_cube1[int(leadtime / ts)]
     else:
         skip = True
-        print('no file exists: ', nn_f)
+        #print('no file exists: ', nn_f)
         nn_cube = False
 
     return nn_cube, skip
 
 def load_persistence(dt, sample_points, ts, domain):
     # Persistence forecast
-    persist_dt = dt + timedelta(minutes=ts*2)
+    persist_dt = dt #- timedelta(minutes=leadtime)
     persist_dt_str = persist_dt.strftime('%Y%m%d%H%M')
     persist_radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(persist_dt_str)
-
+    #print('persistence file: {}'.format(persist_radar_f))
     p_radar = iris.load(persist_radar_f)
     p_cube = p_radar[0].interpolate(sample_points, iris.analysis.Linear())
     persist_cube = p_cube[domain[0]:domain[1], domain[2]:domain[3]] / 32
@@ -133,6 +136,7 @@ def load_op_nowcast(dt_str, sample_points, leadtime, domain):
     # Load nowcast data
     nwcst_f = '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/{}_u1096_ng_pp_precip_2km'.format(dt_str)
     if os.path.exists(nwcst_f):
+        #print('op nowcast file: {}'.format(nwcst_f))
         cubelist = n2c.nimrod_to_cubes(nwcst_f)
         n_cubelist = []
         if len(cubelist) < 3:
@@ -160,12 +164,16 @@ def load_op_nowcast(dt_str, sample_points, leadtime, domain):
 
 def load_radar(dt, sample_points, leadtime, domain, ts):
     # Load radar data
-    dt_str = (dt + timedelta(minutes = leadtime+ts*2)).strftime('%Y%m%d%H%M')
+    dt_str = (dt + timedelta(minutes = leadtime)).strftime('%Y%m%d%H%M')
     radar_f = '/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str)
-    radar = iris.load(radar_f)
-    r_cube = radar[0].interpolate(sample_points, iris.analysis.Linear())
-    radar_cube = r_cube[domain[0]:domain[1], domain[2]:domain[3]] / 32
-    radar_cube.units = 'mm/hr'
+    if os.path.exists(radar_f):
+        #print('radar file: {}'.format(radar_f))
+        radar = iris.load(radar_f)
+        r_cube = radar[0].interpolate(sample_points, iris.analysis.Linear())
+        radar_cube = r_cube[domain[0]:domain[1], domain[2]:domain[3]] / 32
+        radar_cube.units = 'mm/hr'
+    else:
+        radar_cube = 0
 
     return radar_cube
 
@@ -228,8 +236,9 @@ def quickplot(nn_cube, r_cube):
     iplt.show()
 
 if __name__ == "__main__":
-    import sys; sys.path.append('/home/h03/jcheung/python/lib')
-    import toolbox as tb
-    leadtimes = range(0, 75, 15)
-    tb.parallelise(main)(leadtimes)
-    #main()
+    #import sys; sys.path.append('/home/h03/jcheung/python/lib')
+    #import toolbox as tb
+    #leadtimes = range(0, 75, 15)
+    #tb.parallelise(main)(leadtimes)
+    for leadtime in [15]: #range(0, 75, 15):
+        main(leadtime)

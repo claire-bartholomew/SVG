@@ -50,7 +50,47 @@ def main():
     # Operational nowcast output
     n_cubelist = load_nowcast(dt_str, sample_points, domain) #r_domain)
 
-    animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior, model) #, nn_cubelist2)
+
+    t = 11
+    print('time = ', (t+1)*5)
+    r_cube = r_cubelist[t][0:74, 54:128]
+    nn_cube = nn_cubelist[0][t+1][0:74, 54:128] 
+
+    fig = plt.figure(figsize=(12, 5))
+    colors = ['black', 'cornflowerblue', 'royalblue', 'blue', 'lime', 'yellow', 'orange', 'red', 'fuchsia'] #, 'white']
+    levels = [0, 0.1, 0.25, 0.5, 1., 2., 4., 8. ,16., 32.]
+    ax = fig.add_subplot(1,2,1)
+    iplt.contourf(r_cube, levels, colors=colors, origin='lower', extend='max')
+    ax = fig.add_subplot(1,2,2)
+    iplt.contourf(nn_cube, levels, colors=colors, origin='lower', extend='max')
+    plt.show()
+
+    fig = plt.figure(figsize=(12, 5))
+    # ax = fig.add_subplot(1,2,1)
+    # plt.title('Radar')
+    # plt.hist(np.array(r_cube.data).flatten(), bins=range(0, 40, 1), log=True)
+    # ax.set_ylim([1, 1000])
+    # ax.set_xlim([0, 30])
+    # ax = fig.add_subplot(1,2,2)
+    # plt.title('NN prediction')
+    plt.hist(np.array(nn_cube.data).flatten(), bins=range(0, 40, 1), log=True, color='blue', alpha=1, label='NN pred')
+    plt.hist(np.array(r_cube.data).flatten(), bins=range(0, 40, 1), log=True, color='orange', alpha=0.6, label='radar')
+    plt.legend()
+    ax.set_ylim([1, 1000])
+    ax.set_xlim([0, 30])
+    plt.show()
+
+    fig = plt.figure(figsize=(5, 5))
+    ax = fig.add_subplot(111)
+    plt.scatter(nn_cube.data.flatten(), r_cube.data.flatten(), s=26, marker='.', alpha=0.3)
+    ax.set_ylabel('radar')
+    ax.set_xlabel('nn pred')
+    plt.show()
+
+    pdb.set_trace()
+
+
+    #animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior, model) #, nn_cubelist2)
     #pdb.set_trace()
 
 def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior, model): #, nn_cubelist2):
