@@ -15,7 +15,7 @@ class lstm(nn.Module):
         self.lstm = nn.ModuleList([nn.LSTMCell(hidden_size, hidden_size) for i in range(self.n_layers)])
         self.output = nn.Sequential(
                 nn.Linear(hidden_size, output_size),
-                nn.BatchNorm1d(output_size), #comment out for lp
+                #nn.BatchNorm1d(output_size), #comment out for lp
                 nn.Tanh())
         self.hidden = self.init_hidden()
 
