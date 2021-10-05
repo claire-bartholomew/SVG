@@ -141,8 +141,12 @@ def exp_criterion(prediction, target):
     '''
     Error to give more weighting to higher rain rates
     '''
-    error = torch.abs(prediction - target)**2 * np.exp(target) 
-    loss = torch.mean(error) 
+    #error = torch.abs(prediction - target)**2
+    #error = error * torch.exp(target) 
+    #loss = torch.mean(error)
+    error = (torch.log(prediction / target))**2
+    loss = torch.exp(torch.sqrt(torch.mean(error)))
+   
     return loss 
 
 def kl_criterion(mu1, logvar1, mu2, logvar2):
@@ -162,6 +166,7 @@ posterior.cuda()
 prior.cuda()
 encoder.cuda()
 decoder.cuda()
+#exp_criterion.cuda()
 #mse_criterion.cuda()
 
 # --------- load a dataset ------------------------------------
@@ -217,7 +222,7 @@ def prep_data(files, filedir):
         #pdb.set_trace()
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
 
-        data[np.where(data < 0)] = 0.
+        data[np.where(data <= 0)] = 0.000001 # can't be 0 as RMSF won't like division by 0
         #data[np.where(data > 32)] = 32.
         data[np.where(data > 64)] = 64.
         #maxi = np.amax(data)
@@ -249,6 +254,8 @@ def prep_data(files, filedir):
 
     # Convert to torch tensors
     tensor = torch.stack([torch.Tensor(i) for i in dataset])
+    #print(tensor)
+    #pdb.set_trace()
 
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
@@ -456,6 +463,7 @@ def train(x):
         x_pred = decoder([h_pred, skip])
         #mse += mse_criterion(x_pred, x[i])
         exp_loss += exp_criterion(x_pred, x[i])
+        #print('mu=', mu, 'logvar=', logvar, 'mu_p=', mu_p, 'logvar_p=', logvar_p)
         kld += kl_criterion(mu, logvar, mu_p, logvar_p)
 
     #loss = mse + kld*opt.beta
@@ -494,8 +502,8 @@ for epoch in range(opt.niter):
 
         # train frame_predictor 
         #mse, kld = train(x)
-        exp_loss, kld = train(x)
-        epoch_exp_loss += exp_loss
+        expl, kld = train(x)
+        epoch_exp_loss += expl
         #epoch_mse += mse
         epoch_kld += kld
 
@@ -528,7 +536,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model9.pth' % opt.log_dir)
+        '%s/model5.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
