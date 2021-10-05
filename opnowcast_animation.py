@@ -93,7 +93,7 @@ def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior, model): #, nn_cu
             plt.gca().coastlines('50m', color='white')
             #plt.title('Op nowcast', fontsize=18)
             #plt.title('No LSTM', fontsize=15)
-            
+
             # Add the colour bar
             cbar = plt.colorbar(cf, colorbar_axes, orientation='vertical')
             cbar.ax.set_ylabel('Rain rate (mm/hr)')
@@ -121,20 +121,26 @@ def load_nn_pred(dt_str, model, domain):
 
 def load_nowcast(dt_str, sample_points, domain):
     # Load nowcast data
+    #5 min timesteps rapid refresh op nowcast from T+5 to T+60:
     nwcst_f = '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast_5min/{}_u1096_ng_pp_precip5min_2km'.format(dt_str)
+    #15 min timesteps op nowcast
+    nwcst_f = '/data/cr1/cbarth/phd/SVG/verification_data/op_nowcast/{}_u1096_ng_pp_precip_2km'.format(dt_str)
     cubelist = n2c.nimrod_to_cubes(nwcst_f)
     n_cubelist = []
     #pdb.set_trace()
-    nowcast = cubelist[0] #2]
+    #nowcast = cubelist[0] #for 5 min nowcast
+    nowcast = cubelist[2] #for 15 min nowcast
     if nowcast.name() != 'rainrate':
         print('rainrate not at index 2')
         for i in len(cubelist):
             if cubelist[i].name() == 'rainrate':
                 nowcast = cubelist[i]
-
     nc_cube = nowcast.interpolate(sample_points, iris.analysis.Linear())
     nowcast_cube = nc_cube[:, domain[0]:domain[1], domain[2]:domain[3]]/32
-    for cu in range(12): #[0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7]: #range(8): #[1, 3]: #, 5]: #i.e. t+30, t+60, t+90
+    #pdb.set_trace()
+
+    #for cu in [0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 7]: #for 15 min op nowcast
+    for cu in range(12): #for 5 min op nowcast
         n_cubelist.append(nowcast_cube[cu])
 
     return n_cubelist #nowcast_cube #n_cubelist
