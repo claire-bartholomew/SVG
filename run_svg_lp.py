@@ -44,7 +44,7 @@ torch.manual_seed(seed)
 dtype = torch.FloatTensor
 
 #===============================================================================
-def main(startdate, model_path, model, domain, threshold):
+def main(startdate, model_path, model, domain, threshold, datadi):
 
     print('Model = ', model_path, model)
     enddate = startdate + timedelta(minutes=15)
@@ -61,14 +61,14 @@ def main(startdate, model_path, model, domain, threshold):
             files_v = []
             for dt in date_list:
                 dt_str = datetime.strftime(dt, '%Y%m%d%H%M')
-                files_v.append('/data/cr1/cbarth/phd/SVG/verification_data/radar/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(dt_str))
+                files_v.append('{}/{}_nimrod_ng_radar_rainrate_composite_1km_UK'.format(datadi, dt_str))
 
             list_tst = []
             for file in files_v:
                 if os.path.isfile(file):
                     list_tst.append(file)
 
-            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, domain, threshold)
+            test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, domain, threshold, datadi)
             if skip == False:
                 testing_batch_generator = get_testing_batch(test_loader)
 
@@ -79,6 +79,7 @@ def main(startdate, model_path, model, domain, threshold):
 
                 i = 0
                 print('start datetime:', start_date[i])
+                #dt_str = start_date[i].strftime('%Y%m%d%H%M')
                 yyyy = str(start_date[i])[10:14]
                 mm = str(start_date[i])[15:17]
                 dd = str(start_date[i])[18:20]
@@ -94,11 +95,14 @@ def main(startdate, model_path, model, domain, threshold):
                 mean_ssim = np.mean(ssim[batch_number], 1)
                 ordered = np.argsort(mean_ssim)
                 sidx = ordered[-1]
+                #sidx = 28
                 for t in range(n_eval):
+                    #pred_cube.data[t] = np.exp(all_gen[sidx][t][batch_number][0].detach().numpy() * np.log(threshold)) - 1. #for log transform
                     pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
+                    #pred_cube.data[t] = all_gen[6][t][batch_number][0].detach().numpy() * threshold    #select random other sample
                     pred_cube.units = 'mm/hr'
-                print("plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
-                iris.save(pred_cube, "plots_nn_T{}_{}.nc".format(dt_str, model[:-4]))
+                print("{}/plots_nn_T{}_{}.nc".format(datadi, dt_str, model[:-4]))
+                iris.save(pred_cube, "{}/plots_nn_T{}_{}.nc".format(datadi, dt_str, model[:-4]))
 
             dtime = dtime + timedelta(minutes=15)
 
@@ -136,14 +140,14 @@ def chunks(l, n):
     for i in range(0, len(l), n):
         yield l[i:i + n]
 
-def prep_data(files, n_eval, domain, threshold):
+def prep_data(files, n_eval, domain, threshold, datadi):
 
     # Regrid to a resolution x4 lower
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
                      ('projection_x_coordinate', np.linspace(-404500., 1318500., 431))]
 
     timeformat = "%Y%m%d%H%M"
-    regex = re.compile("^/data/cr1/cbarth/phd/SVG/verification_data/radar/(\d*)")
+    regex = re.compile("^{}/(\d*)".format(datadi))
 
     def gettimestamp(thestring):
         m = regex.search(thestring)
@@ -279,3 +283,4 @@ if __name__ == "__main__":
     domain = [160, 288, 130, 258]
     threshold = 32.
     main(startdate, model_path, model, domain, threshold)
+
