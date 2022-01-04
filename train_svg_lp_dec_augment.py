@@ -51,7 +51,7 @@ print(opt.last_frame_skip)
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model1.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model20.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -258,8 +258,8 @@ def prep_data(files, filedir):
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
                         batch_size=opt.batch_size,
-                        shuffle=False, #True,
-                        #drop_last=True,
+                        shuffle=True,
+                        drop_last=True,
                         pin_memory=True)
     return loader
 
@@ -523,7 +523,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model1.pth' % opt.log_dir)
+        '%s/model20.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)

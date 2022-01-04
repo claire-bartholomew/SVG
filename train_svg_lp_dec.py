@@ -242,8 +242,8 @@ def prep_data(files, filedir):
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
                         batch_size=opt.batch_size,
-                        shuffle=False, #True,
-                        #drop_last=True,
+                        shuffle=True,
+                        drop_last=True,
                         pin_memory=True)
     return loader
 
