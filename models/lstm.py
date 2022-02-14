@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import os
 import pdb
+os.environ["CUDA_VISIBLE_DEVICES"]='0'
 
 class lstm(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, n_layers, batch_size):
