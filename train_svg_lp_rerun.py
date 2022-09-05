@@ -471,7 +471,7 @@ def train(x, counting=0):
     mse = 0
     kld = 0
     for i in range(1, opt.n_past+opt.n_future):
-        print(i)
+        #print(i)
         h = encoder(x[i-1])
         h_target = encoder(x[i])[0]
         if opt.last_frame_skip or i < opt.n_past:	
@@ -497,7 +497,7 @@ def train(x, counting=0):
     # Log metrics to visualise model performance with wandb
     counting += 1
     print(counting)
-    wandb.log({"loss": loss})
+    wandb.log({"loss": loss, "mse": mse, "kld": kld})
 
     return mse.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
 
