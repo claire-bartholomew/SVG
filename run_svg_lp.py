@@ -44,7 +44,7 @@ torch.manual_seed(seed)
 dtype = torch.FloatTensor
 
 #===============================================================================
-def main(startdate, model_path, model, domain, threshold, datadi):
+def main(startdate, model_path, model, domain, threshold, datadi, nn_datadi):
 
     print('Model = ', model_path, model)
     enddate = startdate + timedelta(minutes=15)
@@ -98,11 +98,12 @@ def main(startdate, model_path, model, domain, threshold, datadi):
                 #sidx = 28
                 for t in range(n_eval):
                     #pred_cube.data[t] = np.exp(all_gen[sidx][t][batch_number][0].detach().numpy() * np.log(threshold)) - 1. #for log transform
-                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold
+                    pred_cube.data[t] = all_gen[sidx][t][batch_number][0].detach().numpy() * threshold 
+                    print(threshold)
                     #pred_cube.data[t] = all_gen[6][t][batch_number][0].detach().numpy() * threshold    #select random other sample
                     pred_cube.units = 'mm/hr'
                 print("{}/plots_nn_T{}_{}.nc".format(datadi, dt_str, model[:-4]))
-                iris.save(pred_cube, "{}/plots_nn_T{}_{}.nc".format(datadi, dt_str, model[:-4]))
+                iris.save(pred_cube, "{}/plots_nn_T{}_{}.nc".format(nn_datadi, dt_str, model[:-4]))
 
             dtime = dtime + timedelta(minutes=15)
 
@@ -272,6 +273,7 @@ def make_gifs(x, name, frame_predictor, posterior, prior, encoder, decoder, last
                 gen_seq.append(x_in.data.cpu().numpy())
                 gt_seq.append(x[i].data.cpu().numpy())
                 all_gen[s].append(x_in)
+                #pdb.set_trace()
         _, ssim[:, s, :], psnr[:, s, :] = utils.eval_seq(gt_seq, gen_seq)
 
     return(ssim, x, posterior_gen, all_gen)
@@ -281,6 +283,5 @@ if __name__ == "__main__":
     model_path = '/scratch/cbarth/phd/'
     model = 'model131219.pth'
     domain = [160, 288, 130, 258]
-    threshold = 32.
+    threshold = 64.
     main(startdate, model_path, model, domain, threshold)
-

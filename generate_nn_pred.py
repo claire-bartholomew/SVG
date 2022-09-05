@@ -31,7 +31,7 @@ import toolbox as tb
 #===============================================================================
 def main(startdate): #, enddate, mod, n_past, n_future, ts=5):
 
-    mod = 'model624800' #1755653' #model1734435'
+    mod = 'model3256311' #model141021' #model624800' #1755653' #model1734435'
     ts = 5
     n_past = 3 #7', type=int, default=3, help='number of frames to condition on')
     n_future = 21 #17 #21 #', type=int, default=7, help='number of frames to predict')
@@ -106,7 +106,7 @@ def main(startdate): #, enddate, mod, n_past, n_future, ts=5):
 
         test_loader, cube, start_date, skip = prep_data(list_tst, n_eval, batch_size)
         if skip == False:
-            #print('d')
+            print('d')
             #print('start datetime:', start_date[0])
             yyyy = str(start_date[0])[10:14]
             mm = str(start_date[0])[15:17]
@@ -211,7 +211,7 @@ def prep_data(files, n_eval, batch_size):
         skip = True
         loader = []
         start_date = []
-    elif np.mean(data) > 0.01: #0.5: #0.1: # limit loading to rainy days to speed up extraction
+    elif np.mean(data) > 0: #0.01: #0.5: #0.1: # limit loading to rainy days to speed up extraction
         skip = False
         data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
         # Set limit of large values - have asked Tim Darlington about these large values
@@ -223,6 +223,7 @@ def prep_data(files, n_eval, batch_size):
         dataset.append(data)
         dataset.append(data)
         dataset.append(data)
+        #pdb.set_trace()
         # Convert to torch tensors
         tensor = torch.stack([torch.Tensor(i) for i in dataset])
         loader = DataLoader(tensor, #batch_size=1)
@@ -321,19 +322,21 @@ if __name__ == "__main__":
     #startdate = datetime.strptime('201912010005', '%Y%m%d%H%M')  #05  #09
     #startdate = datetime.strptime('202008271205', '%Y%m%d%H%M')
     #main(startdate)
-    mod = 'model624800'
+    #mod = 'model624800'
+    #mod = 'model141021'
+    mod = 'model3256311'
 
     startdates = []
-    startdate = datetime.strptime('201912090005', '%Y%m%d%H%M')   #05  #09
+    startdate = datetime.strptime('201908140705', '%Y%m%d%H%M')   #05  #09
     #startdate = datetime.strptime('202008271205', '%Y%m%d%H%M')
-    for d in range (0, 360): #1): #335): #30): #, 3):
-        for m in range(96):
+    for d in range (0, 1): #360): #1): #335): #30): #, 3):
+        for m in range(16):
             startdates.append(startdate + timedelta(days = d) + timedelta(minutes = m*15))
 
     #tb.parallelise(main)(startdates)
     for date in startdates:
         print(date)
-        dt_str = datetime.strftime(date, '%Y%m%d%H%M')
+        dt_str = datetime.strftime(date + timedelta(minutes = 5), '%Y%m%d%H%M')
         if not os.path.exists('/data/cr1/cbarth/phd/SVG/model_output/{}/plots_nn_T{}_{}.nc'.format(mod, dt_str, mod)):
             print('yes')
             main(date)

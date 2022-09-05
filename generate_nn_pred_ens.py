@@ -31,7 +31,7 @@ import toolbox as tb
 #===============================================================================
 def main(startdate): #, enddate, mod, n_past, n_future, ts=5):
 
-    mod = 'model624800' #1755653' #model1734435'
+    mod = 'model141021' #model624800' #1755653' #model1734435'
     ts = 5
     n_past = 3 #7', type=int, default=3, help='number of frames to condition on')
     n_future = 21 #17 #21 #', type=int, default=7, help='number of frames to predict')
@@ -297,10 +297,10 @@ def make_gifs(x, name, frame_predictor, posterior, n_eval, encoder, decoder,
 
 if __name__ == "__main__":
     startdates = []
-    startdate = datetime.strptime('201912290005', '%Y%m%d%H%M')   #05  #09
-    mod = 'model624800'
+    startdate = datetime.strptime('201908180100', '%Y%m%d%H%M')   #05  #09
+    mod = 'model141021' #model624800'
     #startdate = datetime.strptime('202008271205', '%Y%m%d%H%M')
-    for d in range (0, 360): #1): #335): #30): #, 3):
+    for d in range (0, 1): #360): #1): #335): #30): #, 3):
         for m in range(96):
             startdates.append(startdate + timedelta(days = d) + timedelta(minutes = m*15))
 

@@ -32,6 +32,7 @@ def main():
         import run_svg_fp as run_svg
     else:
         import run_svg_lp_new as run_svg
+        #import run_svg_lp as run_svg
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),

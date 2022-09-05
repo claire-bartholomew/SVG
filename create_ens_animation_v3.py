@@ -17,8 +17,8 @@ def main():
     dt_str = '201908180100' #201907171900' #201908180100   #201910210200' #201912081600' #201909060000' #08121200' #1100' #201908141630' #201909291300' #201908141630' #201909291300'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model624800.pth'
-
+    model = 'model624800.pth' #model141021.pth' #model624800.pth'
+    #datadi = '/data/cr1/cbarth/phd/SVG/verification_data/radar/'
     #--------------------------------------------------------------
 
     if prior == 'fp':
@@ -36,7 +36,7 @@ def main():
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
     #for model in [model0, model1, model2, model3, model4, model5, model6, model7, model8, model9]:
-    #    run_svg.main(dt, model_path, model, domain, threshold)
+    #run_svg.main(dt, model_path, model, domain, threshold, datadi)
 
     ens_cubes = []
 
@@ -50,11 +50,11 @@ def main():
     ## Operational nowcast output
     #n_cubelist = load_nowcast(dt_str, sample_points)
 
-    animate(r_cubelist, ens_cubes, dt_str, prior)
-    prob_animate(r_cubelist, ens_cubes, dt_str, prior)
+    animate(r_cubelist, ens_cubes, dt_str, prior, model)
+    prob_animate(r_cubelist, ens_cubes, dt_str, prior, model)
     #pdb.set_trace()
 
-def animate(r_cubelist, ens_cubes, dt_str, prior):
+def animate(r_cubelist, ens_cubes, dt_str, prior, model):
     # define colours and levels for colorbar
     colors = ['black', 'cornflowerblue', 'royalblue', 'blue', 'lime', 'yellow', 'orange', 'red', 'fuchsia'] #, 'white']
     levels = [0, 0.1, 0.25, 0.5, 1., 2., 4., 8. ,16., 32.]
@@ -67,7 +67,7 @@ def animate(r_cubelist, ens_cubes, dt_str, prior):
     fig = plt.figure(figsize=(17, 8))
 
     # Set video filename
-    filename = "animations/{}_ens_radar_animation_{}.mp4".format(prior, dt_str)
+    filename = "animations/{}_{}_ens_radar_animation_{}.mp4".format(model[:-4], prior, dt_str)
 
     # Create plot frames
     with writer.saving(fig, filename, 300):
@@ -91,7 +91,7 @@ def animate(r_cubelist, ens_cubes, dt_str, prior):
     plt.tight_layout()
     plt.close()
 
-def prob_animate(r_cubelist, ens_cubes, dt_str, prior):
+def prob_animate(r_cubelist, ens_cubes, dt_str, prior, model):
     # define colours and levels for colorbar
     colors = ['black', 'cornflowerblue', 'royalblue', 'blue', 'lime', 'yellow', 'orange', 'red', 'fuchsia'] #, 'white']
     levels = [0, 0.1, 0.25, 0.5, 1., 2., 4., 8. ,16., 32.]
@@ -104,7 +104,7 @@ def prob_animate(r_cubelist, ens_cubes, dt_str, prior):
     fig = plt.figure(figsize=(12, 6))
 
     # Set video filename
-    filename = "animations/{}_ens4_radar_animation_{}.mp4".format(prior, dt_str)
+    filename = "animations/{}_{}_ens4_radar_animation_{}.mp4".format(model[:-4], prior, dt_str)
 
     threshold = 4
     # Create plot frames

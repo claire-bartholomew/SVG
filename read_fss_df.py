@@ -3,6 +3,7 @@ import pdb
 from datetime import datetime, timedelta
 import os
 import iris
+import matplotlib
 import matplotlib.pyplot as plt
 import iris.quickplot as qplt
 import iris.plot as iplt
@@ -11,9 +12,8 @@ import pandas as pd
 
 def main():
 
-    filename = 'daily_fss4_45_n9_th1.csv'
+    filename = 'fss_df/daily_fss4_30_n9_th1.csv'
     df = pd.read_csv(filename)
-
 
     df = df.sort_values('fss_e_mean')
     print(df)
@@ -21,10 +21,28 @@ def main():
 
     df_0p1 = df.loc[df['mean_data'] >= 0.1]
 
-    print(df_0p1.loc[df_0p1['fss_e_mean'] > df_0p1['fss_on']])
+    print(df_0p1)
+
     pdb.set_trace()
 
-    #ax2 = df_0p1.plot.scatter(x='fss_on', y='fss_e_mean')
+    print(df_0p1.loc[df_0p1['fss_e_mean'] > df_0p1['fss_on']])
+
+
+    ax2 = plt.gca()
+    ax2 = df_0p1.plot.scatter(x='fss_on', y='fss_e_mean', c='mean_data', norm=matplotlib.colors.LogNorm(), cmap='jet') #Blues_r')
+    #ax2 = df_0p1.loc[df_0p1['fss_e_mean'] > 0.1].plot.scatter(x='fss_on', y='fss_e_mean') #, c='mean_data') #color='b')
+    #ax2 = df_0p1.loc[df_0p1['fss_e_mean'] < 0.1].plot.scatter(x='fss_on', y='fss_e_mean') #, c='mean_data') #color='r')
+    ax2.plot([0, 1], [0, 1], ls="--", c=".3")
+    plt.show()
+
+    pdb.set_trace()
+
+    poor_cases = df_0p1.loc[df_0p1['fss_e_mean'] < 0.1]
+    poor_dates = poor_cases['datetime']
+    print(poor_dates)
+    poor_cases.to_csv('poor_cases.csv', index=False)
+    poor_dates.to_csv('poor_dates.csv', index=False)
+    pdb.set_trace()
 
     df_0p1_lowfss = df_0p1.loc[df_0p1['fss_e_mean'] <= 0.2]
 
@@ -50,11 +68,10 @@ def main():
     # ax4 = df_0p1_lowfss.plot.scatter(x='fss_e_mean', y='min_fss')
     # plt.show()
 
-    ax = plt.gca()
-
-    df_0p1_lowfss.plot(kind='scatter',x='fss_e_mean',y='max_fss',ax=ax)
-    df_0p1_lowfss.plot(kind='scatter',x='fss_e_mean',y='min_fss', color='red', ax=ax)
-    plt.show()
+    #ax = plt.gca()
+    #df_0p1_lowfss.plot(kind='scatter',x='fss_e_mean',y='max_fss',ax=ax)
+    #df_0p1_lowfss.plot(kind='scatter',x='fss_e_mean',y='min_fss', color='red', ax=ax)
+    #plt.show()
 
     df3 = df_0p1_lowfss.sort_values('max-min')
 
