@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
+import os
 import pdb
+os.environ["CUDA_VISIBLE_DEVICES"]='0'
 
 class lstm(nn.Module):
     def __init__(self, input_size, output_size, hidden_size, n_layers, batch_size):
@@ -22,8 +24,8 @@ class lstm(nn.Module):
     def init_hidden(self):
         hidden = []
         for i in range(self.n_layers):
-            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size)), #.cuda()),
-                           Variable(torch.zeros(self.batch_size, self.hidden_size)))) #.cuda())))
+            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size).cuda()),
+                           Variable(torch.zeros(self.batch_size, self.hidden_size).cuda())))
         return hidden
 
     def forward(self, input):
@@ -52,8 +54,8 @@ class gaussian_lstm(nn.Module):
     def init_hidden(self):
         hidden = []
         for i in range(self.n_layers):
-            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size)), #.cuda()),
-                           Variable(torch.zeros(self.batch_size, self.hidden_size)))) #.cuda())))
+            hidden.append((Variable(torch.zeros(self.batch_size, self.hidden_size).cuda()),
+                           Variable(torch.zeros(self.batch_size, self.hidden_size).cuda())))
         return hidden
 
     def reparameterize(self, mu, logvar):

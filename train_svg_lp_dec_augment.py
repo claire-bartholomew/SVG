@@ -15,6 +15,9 @@ import numpy as np
 import re
 import datetime
 import time
+#import wandb
+
+#wandb.init(project="test_svg", entity="claire-bartholomew")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
@@ -46,13 +49,18 @@ parser.add_argument('--data_threads', type=int, default=5, help='number of data 
 parser.add_argument('--num_digits', type=int, default=2, help='number of digits for moving mnist')
 parser.add_argument('--last_frame_skip', default=True, help='if true, skip connections go between frame t and frame t+t rather than last ground truth frame') #action='store_true'
 
-
 opt = parser.parse_args()
 print(opt.last_frame_skip)
 
+#wandb.config = {
+#  "learning_rate": opt.lr,
+#  "epochs": opt.niter,
+#  "batch_size": opt.batch_size
+#}
+
 if opt.model_dir != '':
     # load model and continue training from checkpoint
-    saved_model = torch.load('%s/model1.pth' % opt.model_dir)
+    saved_model = torch.load('%s/model0.pth' % opt.model_dir)
     optimizer = opt.optimizer
     model_dir = opt.model_dir
     opt = saved_model['opt']
@@ -187,6 +195,7 @@ def prep_data(files, filedir):
 
     # only keep filenames where 10 consecutive files exist at 5 min intervals
     sorted_files = list(chunks(sorted_files, 10))
+    print(sorted_files)
     for group in sorted_files:
         if len(group) < 10:
             sorted_files.remove(group)
@@ -200,6 +209,9 @@ def prep_data(files, filedir):
                 sorted_files.remove(group)
     count = 0
     dataset = []
+    dataset2 = []
+    dataset3 = []
+    dataset4 = []
     for fn in sorted_files:
         #print(fn)
         #cube = iris.load_cube(fn)
@@ -207,37 +219,52 @@ def prep_data(files, filedir):
         cube = cube[0] / 32.
         cube1 = cube.interpolate(sample_points, iris.analysis.Linear())
         data = cube1.data
-        data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
-        #data = data[:, 288:416, 100:228] # scottish domain
-
-        # limit range of data
-        #data[np.where(data < 4)] = 0. #mask data to concentrate on higher rain rates
-        data[np.where(data < 0)] = 0.
-        data[np.where(data > 64)] = 64.
-
-        #Log transform of data
-        #data = np.log(data+1)
-
-        # Normalise data
-        data = data / 64.
-        #data = data / np.log(64.)
-
-        if len(data) < 10:
+        #print(np.shape(data), len(np.shape(data)))
+        if ((len(data) < 10) | (len(np.shape(data)) < 3)):
             print(fn)
             print('small data of size ', len(data))
             count += 1
         else:
+            data = data[:, 160:288, 130:258] #focusing on a 128x128 grid box area over England
+            #data = data[:, 288:416, 100:228] # scottish domain
+
+            # limit range of data
+            #data[np.where(data < 4)] = 0. #mask data to concentrate on higher rain rates
+            data[np.where(data < 0)] = 0.
+            data[np.where(data > 64)] = 64.
+
+            #Log transform of data
+            #data = np.log(data+1)
+
+            # Normalise data
+            data = data / 64.
+            #data = data / np.log(64.)
+
             dataset.append(data)
-    print(dataset)
-    print(dataset[0])
+            # manually add data augmentation
+            data2 = np.rot90(data, axes=(1, 2))
+            dataset2.append(data2.copy())
+            data3 = np.rot90(data2, axes=(1, 2))
+            dataset3.append(data3.copy())
+            data4 = np.rot90(data3, axes=(1, 2))
+            dataset4.append(data4.copy())
+
+    #print('dataset', np.shape(dataset))
+    #print(np.shape(dataset[0]))
+    #print('dataset2', np.shape(dataset2))
+    #print(np.shape(dataset2[0]))
+    augmented_data = dataset + dataset2 + dataset3 + dataset4
+    #print(np.shape(augmented_data))
+    #print(np.shape(augmented_data[0]))
+
     print('count', count)
     #print('data max', np.amax(dataset))
     #dataset = dataset / np.amax(dataset)
 
-    print('size of data:', len(dataset), np.shape(dataset))
+    #print('size of data:', len(dataset), np.shape(dataset))
 
     # Convert to torch tensors
-    tensor = torch.stack([torch.Tensor(i) for i in dataset])
+    tensor = torch.stack([torch.Tensor(i) for i in augmented_data]) #dataset])
 
     loader = DataLoader(tensor, #batch_size=1)
                         #num_workers=opt.data_threads,
@@ -277,13 +304,16 @@ for file in files_t:
 train_loader = prep_data(list_train, 'train')
 print('training data loaded')
 
-files_v = [f'/nobackup/sccsb/radar/validate/2021{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
-           for mi in range(0,60,5) for h in range(24) for mmdd in val_dates] #range(25,28) for mo in range(5,6)]
-list_tst = []
-for file in files_v:
-    if os.path.isfile(file):
-        list_tst.append(file)
-test_loader = prep_data(list_tst, 'validate')
+#files_v = [f'/nobackup/sccsb/radar/validate/2021{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+#           for mi in range(0,60,5) for h in range(24) for mmdd in val_dates] #range(25,28) for mo in range(5,6)]
+#list_tst = []
+#for file in files_v:
+#    if os.path.isfile(file):
+#        list_tst.append(file)
+#    else:
+#        print('no', file)
+#test_loader = prep_data(list_tst, 'validate')
+#print('validation data loaded')
 
 def get_training_batch():
     while True:
@@ -292,16 +322,15 @@ def get_training_batch():
                 batch = utils.normalize_data(opt, dtype, sequence)
                 yield batch
 training_batch_generator = get_training_batch()
-
 #pdb.set_trace()
 
-def get_testing_batch():
-    while True:
-        for sequence in test_loader: #.dataset:
-            if np.shape(sequence)[0] == opt.batch_size:
-                batch = utils.normalize_data(opt, dtype, sequence)
-                yield batch 
-testing_batch_generator = get_testing_batch()
+#def get_testing_batch():
+#    while True:
+#        for sequence in test_loader: #.dataset:
+#            if np.shape(sequence)[0] == opt.batch_size:
+#                batch = utils.normalize_data(opt, dtype, sequence)
+#                yield batch 
+#testing_batch_generator = get_testing_batch()
 
 # --------- plotting funtions ------------------------------------
 def plot(x, epoch):
@@ -376,13 +405,13 @@ def plot(x, epoch):
                 row.append(gen_seq[s][t][i])
             gifs[t].append(row)
 
-    print('[%02d] mse loss: %.5f' % (epoch, mse)) #/opt.epoch_size))
-
     fname = '%s/gen/sample_%d.png' % (opt.log_dir, epoch) 
     utils.save_tensors_image(fname, to_plot)
 
     fname = '%s/gen/sample_%d.gif' % (opt.log_dir, epoch) 
     utils.save_gif(fname, gifs)
+
+    print('[%02d] validate mse loss: %.5f' % (epoch, mse)) #epoch_mse/opt.epoch_size)
 
 
 def plot_rec(x, epoch):
@@ -459,6 +488,8 @@ def train(x):
     encoder_optimizer.step()
     decoder_optimizer.step()
 
+    #wandb.log({"loss": loss})
+
     return mse.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
 
 # --------- training loop ------------------------------------
@@ -500,9 +531,9 @@ for epoch in range(opt.niter):
     posterior.eval()
     prior.eval()
 
-    x = next(testing_batch_generator)
-    plot(x, epoch)
-    plot_rec(x, epoch)
+    #x = next(testing_batch_generator)
+    #plot(x, epoch)
+    #plot_rec(x, epoch)
 
     # save the model
     torch.save({
@@ -512,7 +543,7 @@ for epoch in range(opt.niter):
         'posterior': posterior,
         'prior': prior,
         'opt': opt},
-        '%s/model1.pth' % opt.log_dir)
+        '%s/model0.pth' % opt.log_dir)
     print('updated model saved')
     if epoch % 10 == 0:
         print('log dir: %s' % opt.log_dir)
