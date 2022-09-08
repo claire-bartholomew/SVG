@@ -31,7 +31,7 @@ import toolbox as tb
 #===============================================================================
 def main(startdate): #, enddate, mod, n_past, n_future, ts=5):
 
-    mod = 'model3256311' #model141021' #model624800' #1755653' #model1734435'
+    mod = 'model8985407' #3256311' #model141021' #model624800' #1755653' #model1734435'
     ts = 5
     n_past = 3 #7', type=int, default=3, help='number of frames to condition on')
     n_future = 21 #17 #21 #', type=int, default=7, help='number of frames to predict')
@@ -39,7 +39,8 @@ def main(startdate): #, enddate, mod, n_past, n_future, ts=5):
     data_root = 'data' #', help='root directory for data')
     #model_path = 'logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/model4.pth'
     #model_path = 'logs/lp/radar/model=vgg128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=False-beta=0.0001000/model3.pth'
-    model_path = '/scratch/cbarth/phd/{}.pth'.format(mod) #model1755653.pth' #model1734435.pth' #530043.pth' #131219.pth' #582525.pth' #need to change line 79 too
+    model_path = '/data/cr1/cbarth/phd/SVG/logs/lp/radar/model=dcgan128x128-rnn_size=256-predictor-posterior-prior-rnn_layers=2-1-1-n_past=3-n_future=7-lr=0.0020-g_dim=128-z_dim=10-last_frame_skip=True-beta=0.0001000/{}.pth'.format(mod) 
+    #model_path = '/scratch/cbarth/phd/{}.pth'.format(mod) #model1755653.pth' #model1734435.pth' #530043.pth' #131219.pth' #582525.pth' #need to change line 79 too
     log_dir = 'logs' #, help='directory to save generations to')
     seed = 1 #', default=1, type=int, help='manual seed')
     num_threads = 0 #', type=int, default=0, help='number of data loading threads')
@@ -324,7 +325,8 @@ if __name__ == "__main__":
     #main(startdate)
     #mod = 'model624800'
     #mod = 'model141021'
-    mod = 'model3256311'
+    #mod = 'model3256311'
+    mod = 'model8985407'
 
     startdates = []
     startdate = datetime.strptime('201908140705', '%Y%m%d%H%M')   #05  #09
