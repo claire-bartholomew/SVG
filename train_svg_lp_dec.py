@@ -15,6 +15,10 @@ import numpy as np
 import re
 import datetime
 import time
+import wandb
+
+#Initialise weights and biases
+wandb.init(project="svg_624800", entity="claire-bartholomew")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lr', default=0.002, type=float, help='learning rate')
@@ -46,9 +50,15 @@ parser.add_argument('--data_threads', type=int, default=5, help='number of data 
 parser.add_argument('--num_digits', type=int, default=2, help='number of digits for moving mnist')
 parser.add_argument('--last_frame_skip', default=True, help='if true, skip connections go between frame t and frame t+t rather than last ground truth frame') #action='store_true'
 
-
 opt = parser.parse_args()
 print(opt.last_frame_skip)
+
+# Capture dictionary of hyperparameters for wandb
+wandb.config = {
+  "learning_rate": opt.lr,
+  "epochs": opt.niter,
+  "batch_size": opt.batch_size
+}
 
 if opt.model_dir != '':
     # load model and continue training from checkpoint
@@ -73,8 +83,9 @@ print("Random Seed: ", opt.seed)
 #random.seed(opt.seed)
 np.random.seed(opt.seed) #random seed testing - put this line in place of one above
 torch.manual_seed(opt.seed)
-torch.cuda.manual_seed_all(opt.seed)
-dtype = torch.cuda.FloatTensor
+#torch.cuda.manual_seed_all(opt.seed)
+#dtype = torch.cuda.FloatTensor
+dtype = torch.FloatTensor
 
 # ---------------- load the models  ----------------
 
@@ -148,12 +159,12 @@ def kl_criterion(mu1, logvar1, mu2, logvar2):
 print('-----------loss functions defined-----------')
 
 # --------- transfer to gpu ------------------------------------
-frame_predictor.cuda()
-posterior.cuda()
-prior.cuda()
-encoder.cuda()
-decoder.cuda()
-mse_criterion.cuda()
+#frame_predictor.cuda()
+#posterior.cuda()
+#prior.cuda()
+#encoder.cuda()
+#decoder.cuda()
+#mse_criterion.cuda()
 
 # --------- load a dataset ------------------------------------
 
@@ -170,11 +181,17 @@ def prep_data(files, filedir):
 
     timeformat = "%Y%m%d%H%M"
     if filedir == 'train':
-        regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
+        regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/(\d*)")
     elif filedir == 'test':
-        regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
+        regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/(\d*)")
     elif filedir == 'may':
-        regex = re.compile("^/nobackup/sccsb/radar/may/(\d*)")
+        regex = re.compile("^/data/cr1/cbarth/phd/SVG/training_data/(\d*)")
+    #if filedir == 'train':
+    #    regex = re.compile("^/nobackup/sccsb/radar/train/(\d*)")
+    #elif filedir == 'test':
+    #    regex = re.compile("^/nobackup/sccsb/radar/test/(\d*)")
+    #elif filedir == 'may':
+    #    regex = re.compile("^/nobackup/sccsb/radar/may/(\d*)")
 
     def gettimestamp(thestring):
         m = regex.search(thestring)
@@ -265,9 +282,11 @@ rainy_dates = ['0102', '0103', '0104', '0114', '0115', '0116', '0117', '0121',
 
 #val_dates = ['1222']
 
-# List all possible radar files in range and find those that exist
-files_t = [f'/nobackup/sccsb/radar/train/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+# List all possible radar files in range and find those that exist 
+files_t = [f'/data/cr1/cbarth/phd/SVG/training_data/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
            for mi in range(0,60,5) for h in range(24) for mmdd in rainy_dates] #d in range(25) for mo in range(5,6)]
+#files_t = [f'/nobackup/sccsb/radar/train/2018{mmdd}{h:02}{mi:02}_nimrod_ng_radar_rainrate_composite_1km_UK' \
+#           for mi in range(0,60,5) for h in range(24) for mmdd in rainy_dates] #d in range(25) for mo in range(5,6)]
 
 list_train = []
 for file in files_t:
@@ -455,6 +474,11 @@ def train(x):
     prior_optimizer.step()
     encoder_optimizer.step()
     decoder_optimizer.step()
+
+    # Log metrics to visualise model performance with wandb
+    counting += 1
+    print(counting)
+    wandb.log({"loss": loss, "mse": mse, "kld": kld})
 
     return mse.data.cpu().numpy()/(opt.n_past+opt.n_future), kld.data.cpu().numpy()/(opt.n_future+opt.n_past)
 

@@ -1,0 +1,15 @@
+#!/bin/bash -l
+#SBATCH --qos=normal
+#SBATCH --mem=20GB
+#SBATCH --ntasks=32
+#SBATCH --output=/data/cr1/cbarth/phd/SVG/run_svg5.out
+#SBATCH --time=4300
+#SBATCH --mail-user=claire.bartholomew@metoffice.gov.uk
+#SBATCH --mail-type=ALL
+#SBATCH --error=/data/cr1/cbarth/phd/SVG/run_svg5.err
+#SBATCH --qos=long
+
+conda activate phd
+
+# Python script with all parameters
+python -W ignore train_svg_lp_dec.py --dataset radar --beta 0.0001 --epoch_size 2772 --n_past 3 --n_future 7 --data_root /data/cr1/cbarth/phd/SVG/training_data --niter 5
