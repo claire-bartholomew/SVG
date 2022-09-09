@@ -14,11 +14,11 @@ import cartopy.crs as ccrs
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201907211600' #201904012200' #201909021100' #201909060000' #201910210200' #201908121100' #201910011500' #202008271800' #201909281800' #07191300' #10272345' #291300' #201909191200' #201908141730' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
+    dt_str = '201908140730' #201907211600' #201904012200' #201909021100' #201909060000' #201910210200' #201908121100' #201910011500' #202008271800' #201909281800' #07191300' #10272345' #291300' #201909191200' #201908141730' #201907260000' #201909282100' #201910011200' #201909281300' #201908141630'
     prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model624800.pth' #810068.pth'  #817118.pth'  #810069.pth' #625308.pth' #624800.pth' #723607.pth' #712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
-    mod = 'model624800'
+    model = 'model131219.pth' #624800.pth' #model8985407.pth' # #810068.pth'  #817118.pth'  #810069.pth' #625308.pth' #624800.pth' #723607.pth' #712068.pth' #665443.pth' #624800.pth' #model131219.pth' #667922.pth' #665443.pth' #25308.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    mod = 'model131219' #624800' #model8985407' #
     #model2 = 'model842306.pth'
     #domain = [288, 416, 100, 228] #scotland
     domain = [160, 288, 130, 258] # england (training data domain)
@@ -27,11 +27,11 @@ def main():
     datadi = '/data/cr1/cbarth/phd/SVG/verification_data/radar' #/data/cr1/cbarth/phd/SVG/casestudies' #
     nn_datadi = '/data/cr1/cbarth/phd/SVG/model_output/{}'.format(mod)
     #--------------------------------------------------------------
-    #if prior == 'fp':
-    #    import run_svg_fp as run_svg
-    #else:
-    #    #import run_svg_lp_new as run_svg
-    #    import run_svg_lp as run_svg
+    if prior == 'fp':
+        import run_svg_fp as run_svg
+    else:
+        #import run_svg_lp_new as run_svg
+        import run_svg_lp as run_svg
 
     # x and y coordinate points to regrid to for consistency
     sample_points = [('projection_y_coordinate', np.linspace(-624500., 1546500., 543)),
@@ -39,7 +39,7 @@ def main():
 
     dt = datetime.strptime(dt_str, '%Y%m%d%H%M')
     # if files already exist, can comment out this line. If need to run it, need to run from bash terminal.
-    #run_svg.main(dt, model_path, model, domain, threshold, datadi)
+    run_svg.main(dt, model_path, model, domain, threshold, datadi, nn_datadi)
 
     # Neural network output
     nn_cubelist = load_nn_pred(dt_str, model, domain, nn_datadi) #always domain here even when plotting r_domain, just uncomment line in the function
@@ -127,7 +127,7 @@ def load_nn_pred(dt_str, model, domain, nn_datadi):
     #nn_f = '/data/cr1/cbarth/phd/SVG/plots_nn_T{}_{}.nc'.format(dt_str, model[:-4])
     #nn_f = '/data/cr1/cbarth/phd/SVG/model_output/model624800_v0/plots_nn_T{}_{}.nc'.format(dt_str, model[:-4])
     #nn_f = '/data/cr1/cbarth/phd/SVG/test.nc'
-    #print(nn_f)
+    print(nn_f)
     # Load netcdf file, avoiding the TypeError: unhashable type: 'MaskedConstant'
     cube_gen = iris.fileformats.netcdf.load_cubes(nn_f)
     nn_cubes = list(cube_gen)
