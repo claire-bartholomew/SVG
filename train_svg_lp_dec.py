@@ -437,7 +437,7 @@ def plot_rec(x, epoch):
     utils.save_tensors_image(fname, to_plot)
 
 # --------- training funtions ------------------------------------
-def train(x):
+def train(x, counting=0):
     frame_predictor.zero_grad()
     posterior.zero_grad()
     prior.zero_grad()
