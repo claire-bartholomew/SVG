@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt
 def main():
     #--------------------------------------------------------------
     # Options:
-    dt_str = '201908141630' #201909291300' #201908141630' 
-    prior = 'fp'
+    dt_str = '202008271600' #201908141630' #201909291300' #201908141630' 
+    prior = 'lp'
     model_path = '/scratch/cbarth/phd/'
-    model = 'model600691.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
+    model = 'model4319184.pth' #model600691.pth' #598965.pth' #585435.pth' #566185.pth' #model562947.pth' #model_fp.pth' #model_530043_lp.pth' #model_529994_fp.pth' #model_fp.pth' #131219.pth' #need to also change this in line 32 of run_svg.py
     #domain = [288, 416, 100, 228] #scotland
     #domain = [160, 288, 130, 258] # england
     domain = [160, 288, 100, 228]
@@ -40,12 +40,13 @@ def main():
     # Radar sequence
     r_cubelist = load_radar(dt, dt_str, sample_points, domain)
     # Operational nowcast output
-    n_cubelist = load_nowcast(dt_str, sample_points, domain)
+    #n_cubelist = load_nowcast(dt_str, sample_points, domain)
 
-    animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior)
+    #animate(r_cubelist, nn_cubelist, dt_str, prior, n_cubelist)
+    animate(r_cubelist, nn_cubelist, dt_str, prior)
     #pdb.set_trace()
 
-def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior):
+def animate(r_cubelist, nn_cubelist, dt_str, prior, n_cubelist=None):
     # define colours and levels for colorbar
     colors = ['black', 'cornflowerblue', 'royalblue', 'blue', 'lime', 'yellow', 'orange', 'red', 'fuchsia'] #, 'white']
     levels = [0, 0.1, 0.25, 0.5, 1., 2., 4., 8. ,16., 32.]
@@ -64,23 +65,25 @@ def animate(r_cubelist, n_cubelist, nn_cubelist, dt_str, prior):
     with writer.saving(fig, filename, 300):
         for t in range(23): #8):
             print('time = ', (t+1)*5) #15)
-            ax = fig.add_subplot(1,3,1)
+            #ax = fig.add_subplot(1,3,1)
+            ax = fig.add_subplot(1,2,1)
             cf = iplt.contourf(r_cubelist[t], levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
             cf.cmap.set_over('white')
             plt.gca().coastlines('50m', color='white')
             plt.title('Radar', fontsize=18)
-            ax = fig.add_subplot(1,3,2)
+            #ax = fig.add_subplot(1,3,2)
+            ax = fig.add_subplot(1,2,2)
             #pdb.set_trace()
             print(nn_cubelist[0][t+1])
             cf = iplt.contourf(nn_cubelist[0][t+1], levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
             cf.cmap.set_over('white')
             plt.gca().coastlines('50m', color='white')
             plt.title('SVG prediction', fontsize=18)
-            ax = fig.add_subplot(1,3,3)
-            cf = iplt.contourf(n_cubelist[t], levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
-            cf.cmap.set_over('white')
-            plt.gca().coastlines('50m', color='white')
-            plt.title('Op nowcast', fontsize=18)
+            #ax = fig.add_subplot(1,3,3)
+            #cf = iplt.contourf(n_cubelist[t], levels, colors=colors, origin='lower', extend='max') #, cmap=cm) #, vmin=0, vmax=16)
+            #cf.cmap.set_over('white')
+            #plt.gca().coastlines('50m', color='white')
+            #plt.title('Op nowcast', fontsize=18)
 
             # Add axes to the figure, to place the colour bar [left, bottom, width, height] (of cbar)
             colorbar_axes = fig.add_axes([0.15, 0.1, 0.73, 0.03])
